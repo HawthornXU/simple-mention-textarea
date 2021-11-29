@@ -1,0 +1,72 @@
+{
+  "root": "apps/spond-client",
+  "sourceRoot": "apps/spond-client/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/web:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/spond-client",
+        "index": "apps/spond-client/src/index.html",
+        "baseHref": "/",
+        "main": "apps/spond-client/src/main.tsx",
+        "polyfills": "apps/spond-client/src/polyfills.ts",
+        "tsConfig": "apps/spond-client/tsconfig.app.json",
+        "assets": [
+          "apps/spond-client/src/favicon.ico",
+          "apps/spond-client/src/assets"
+        ],
+        "styles": [],
+        "scripts": [],
+        "webpackConfig": "@nrwl/react/plugins/webpack"
+      },
+      "configurations": {
+        "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/spond-client/src/environments/environment.ts",
+              "with": "apps/spond-client/src/environments/environment.prod.ts"
+            }
+          ],
+          "optimization": true,
+          "outputHashing": "all",
+          "sourceMap": false,
+          "namedChunks": false,
+          "extractLicenses": true,
+          "vendorChunk": false
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nrwl/web:dev-server",
+      "options": {
+        "buildTarget": "spond-client:build",
+        "hmr": true
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "spond-client:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/spond-client/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/apps/spond-client"],
+      "options": {
+        "jestConfig": "apps/spond-client/jest.config.js",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": []
+}
