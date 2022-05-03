@@ -20,7 +20,7 @@
         ],
         "styles": [],
         "scripts": [],
-        "webpackConfig": "@nrwl/react/plugins/webpack"
+        "webpackConfig": "apps/spond-client/webpack.config.js"
       },
       "configurations": {
         "production": {
