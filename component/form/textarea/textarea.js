@@ -9,6 +9,7 @@ import { getErrorFromObject } from '../error/helper';
 
 import { SizeChart } from '../sizeChart';
 import { Error } from '../error/error';
+import { MentionTextarea } from './mentionTextarea';
 
 const PureTextarea = (props) => {
 	const {
@@ -31,7 +32,8 @@ const PureTextarea = (props) => {
 		autoGrow,
 		minHeight,
 		fontSize,
-		marginTop
+		marginTop,
+    mentionOption
 	} = props;
 	const errorFieldID = `${name}_error`;
 	let myRef = React.createRef();
@@ -48,7 +50,8 @@ const PureTextarea = (props) => {
 	};
 
 	const onChangeHandler = (event) => {
-		updateHeight();
+    console.log(event);
+    updateHeight();
 
 		if (onChange) {
 			onChange(event);
@@ -61,26 +64,46 @@ const PureTextarea = (props) => {
 				{label}
 			</Label>}
 			{explanation && <Explanation htmlFor={name}>{explanation}</Explanation>}
-			<TextareaBed size={size} error={error} style={{height: height}}>
-				<Textarea
-					id={name}
-					name={name}
-					disabled={disabled}
-					aria-describedby={errorFieldID}
-					ref={(ref) => {
-						myRef = ref;
-						ref && onSetRef(ref);
-					}}
-					onChange={onChangeHandler}
-					onBlur={onBlur}
-					onFocus={onFocus}
-					minHeight={minHeight}
-					value={value}
-					placeholder={placeholder}
-					maxLength={maxLength}
-					fontSize={fontSize}
-					marginTop={marginTop}
-				/>
+			<TextareaBed size={size} error={error} style={{height: height}} id={'1'}>
+        {!mentionOption && <Textarea
+          id={name}
+          name={name}
+          disabled={disabled}
+          aria-describedby={errorFieldID}
+          ref={(ref) => {
+            myRef = ref;
+            ref && onSetRef(ref);
+          }}
+          onChange={onChangeHandler}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          minHeight={minHeight}
+          value={value}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          fontSize={fontSize}
+          marginTop={marginTop}
+        />}
+        {mentionOption && <MentionTextarea
+          id={name}
+          name={name}
+          disabled={disabled}
+          aria-describedby={errorFieldID}
+          ref={(ref) => {
+            myRef = ref;
+            ref && onSetRef(ref);
+          }}
+          onChange={onChangeHandler}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          minHeight={minHeight}
+          value={value}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          fontSize={fontSize}
+          marginTop={marginTop}
+        />
+        }
 			</TextareaBed>
 			{error && <Error id={errorFieldID}>{error}</Error>}
 		</FormFieldWrapper>
@@ -135,7 +158,7 @@ PureTextarea.defaultProps = {
 };
 
 const FormikTextarea = (props) => {
-	const {name} = props;
+	const {name, mentionOption} = props;
 	return (
 		<Field
 			name={name}

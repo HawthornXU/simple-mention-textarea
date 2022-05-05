@@ -1,9 +1,9 @@
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 
 const TextareaBed = styled.div`
   display: flex;
   width: ${({size = 'MD', theme}) => theme.sizeChart.input[size]};
-  
+
   &:after {
     align-self: center;
     background-color: ${({theme}) => theme.state.color.error};
@@ -15,19 +15,19 @@ const TextareaBed = styled.div`
     font-size: ${({theme}) => theme.text.size.subBase};
     height: 17px;
     justify-content: center;
-    margin-left: 4px; 
+    margin-left: 4px;
     z-index: 2;
     width: 17px;
   }
 `;
 
-const Textarea = styled.textarea`
-  appearance: none;
+const TextareaStyle = css`
+    appearance: none;
   background-color: ${({theme, disabled}) => {
-	if (disabled) {
-		return theme.state.color.disabled;
-	}
-	return 'white';
+  if (disabled) {
+    return theme.state.color.disabled;
+  }
+  return 'white';
 }};
   box-sizing: border-box;
   border-radius: ${({theme}) => theme.border.radius.formElement};
@@ -48,6 +48,10 @@ const Textarea = styled.textarea`
   &:focus {
     box-shadow: ${({theme}) => theme.state.focus.outline};
   }
+`
+
+const Textarea = styled.textarea`
+  ${TextareaStyle};
 `;
 
-export { Textarea, TextareaBed };
+export { Textarea, TextareaBed, TextareaStyle };
