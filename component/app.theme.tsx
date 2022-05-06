@@ -3,6 +3,7 @@ import {ThemeProvider, createGlobalStyle} from 'styled-components';
 import * as PT from 'prop-types';
 
 interface AppThemeInput {
+  children: any;
   forModal?: boolean;
   forPublic?: boolean;
 }

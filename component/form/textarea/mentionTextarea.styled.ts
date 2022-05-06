@@ -5,5 +5,8 @@ const Textarea = styled.div<{ref:any, disabled?: boolean, marginTop?: string, fo
   ${TextareaStyle};
   display: block;
 `
+const MentionMarkSpan = styled.span`
+  color: ${({theme}) => theme.text.color.primary};
+`
 
-export { Textarea }
+export { Textarea, MentionMarkSpan }

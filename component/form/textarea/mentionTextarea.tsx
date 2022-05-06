@@ -1,5 +1,5 @@
 import { FC, forwardRef, ReactNode, useEffect, useRef } from 'react';
-import { Textarea } from './mentionTextarea.styled';
+import { MentionMarkSpan, Textarea } from './mentionTextarea.styled';
 
 interface MentionTextarea {
   mentionOption: {
@@ -11,6 +11,13 @@ interface MentionTextarea {
 
 const defaultMentionOption = {
 
+}
+
+const MentionMark: FC = ({children}) => {
+
+  return (<MentionMarkSpan contentEditable={false}>
+    {children}
+  </MentionMarkSpan>)
 }
 
 export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
@@ -34,7 +41,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   return (
     <Textarea {...props} onChange={e => console.log(e)} contentEditable={true} suppressContentEditableWarning={true}  ref={textareaRef}>
       {value}
-      <span contentEditable={false}>1212</span>
+      <MentionMark>@titor Xu</MentionMark>
     </Textarea>
   );
 })
