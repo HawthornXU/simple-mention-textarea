@@ -34,6 +34,7 @@ export function App() {
         (props) => (
           <form onSubmit={props.handleSubmit} onChange={() => onChangevalue(props.values)}>
           <Textarea
+            placeholder="有什么想和大家分享的？"
             name="textarea"
             minHeight="76px"
             size={SizeChart.FULL}
@@ -41,6 +42,7 @@ export function App() {
             maxLength={10000}/>
 
             <Textarea
+              placeholder="有什么想和大家分享的？"
               name="normal"
               minHeight="76px"
               size={SizeChart.FULL}
