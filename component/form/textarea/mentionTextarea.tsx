@@ -23,31 +23,29 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const {mentionOption = defaultMentionOption, value, onChange} = props;
   const textareaRef = useRef<ReactNode>(ref);
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
+
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
-    const textareaElement = mutationRecord[0]?.target?.parentElement;
+    const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
     const range = getSelection();
-    const isInnerTextEmpty = (innerText == null || innerText == '');
-    (isInnerTextEmpty != hasEmpty) && setHasEmpty(isInnerTextEmpty);
-    if (hasEmpty || range == null) {
+    const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
+    setHasEmpty(isInnerTextEmpty);
+
+    if (isInnerTextEmpty || range == null) {
       return;
     }
     const textBeforeCursor = getTextBeforeCursor(range.anchorNode);
     const mentionCharIndex = textBeforeCursor.lastIndexOf(mentionOption.mentionDenotationChar);
-    if (hasValidMentionCharIndex()) {
+    if (hasValidMentionCharIndex(range.anchorNode)) {
 
     } else {
 
     }
-    console.log('range', range);
-    console.dir( textareaElement);
+    // console.log('range', range);
+    // console.dir( textareaElement);
     console.log('innerText', innerText);
-    console.log('innerTextLength', innerText?.length);
-    console.log('textBeforeCursor', textBeforeCursor);
-
-    // textareaElement.getSelection()
-    // console.log(changedValue);
-    // console.log(observer.takeRecords());
+    // console.log('innerTextLength', innerText?.length);
+    // console.log('textBeforeCursor', textBeforeCursor);
   }));
 
   const getTextBeforeCursor = (nodeBeforeCursor: Node | null) => {
