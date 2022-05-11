@@ -28,20 +28,40 @@ export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: nu
   border-radius: ${({theme}) => theme.border.radius.menu};
   box-shadow: ${({theme}) => theme.border.shadow.regular};
   display: flex;
+  overflow-y: auto;
   flex-direction: column;
   list-style: none;
-  padding: 0.5em;
   margin-top: 5px;
-  min-width: 220px;
+  min-width: 300px;
   width: ${({width}) => width || 'auto'};
+  max-height: 175px;
   text-align: left;
 `
 
 export const DropdownItem = styled.div`
+  flex:0 0 50px;
+  display: flex;
 `;
+
+export const AvatarBed = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 64px;
+`
+
+export const DropdownItemTextBed = styled.div`
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-bottom: 1px solid ${({theme}) => theme.border.color.light};
+`
 export const DropdownItemTitle = styled.div`
 `;
 export const DropdownItemSubtitle = styled.div`
+  font-size: ${({theme}) => theme.text.size.miniBase};
+  color: ${({theme}) => theme.text.color.medium};
 `;
 
 export { Textarea, MentionMarkSpan }
