@@ -101,6 +101,7 @@ const PureTextarea = (props) => {
           placeholder={placeholder}
           maxLength={maxLength}
           fontSize={fontSize}
+          mentionOption={mentionOption}
           marginTop={marginTop}
         />
         }
