@@ -17,9 +17,10 @@ interface Values {
 }
 
 const mentionList: Array<MentionItem> = [
-  {id: '1', name: 'Paul Johnson', subTitle: 'Guardian for Robert Johnson', avatarUrl: '', context: {}},
-  {id: '2', name: 'Robert Johnson', subTitle: 'child of Paul Johnson', avatarUrl: '', context: {}},
-  {id: '3', name: 'John Titor', subTitle: '', avatarUrl: '', context: {}},
+  {id: '1', name: 'Paul Johnson', subTitle: 'Guardian for Robert Johnson', avatarUrl: 'http://placekitten.com/34/34', context: {}},
+  {id: '2', name: 'Robert Johnson', subTitle: 'child of Paul Johnson', avatarUrl: 'http://placekitten.com/34/34', context: {}},
+  {id: '3', name: 'John Titor', subTitle: '', avatarUrl: 'http://placekitten.com/34/34', context: {}},
+  {id: '4', name: 'Titor Xu', subTitle: '', avatarUrl: 'http://placekitten.com/34/34', context: {}},
 ]
 
 
