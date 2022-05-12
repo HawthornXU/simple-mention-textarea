@@ -64,4 +64,8 @@ export const DropdownItemSubtitle = styled.div`
   color: ${({theme}) => theme.text.color.medium};
 `;
 
+export const HighlightedMark = styled.mark`
+  font-weight: ${({theme}) => theme.text.weight.medium};
+`
+
 export { Textarea, MentionMarkSpan }
