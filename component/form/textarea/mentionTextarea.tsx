@@ -73,7 +73,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const textareaRef = useRef<ReactNode>(ref);
   const mentionItemsWrapperRef = useRef();
-  const proxyRef = useRef({anchorEl, validMentionList, intendedKey});
+  const proxyRef = useRef({anchorEl, validMentionList, intendedKey, mentionCharIndex: 0});
 
   useEffect(() => {
     textareaObserver.current.observe(textareaRef.current as Node, {
@@ -114,7 +114,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     }
     const pureTextBeforeCursor = range.anchorNode.textContent?.slice(0, range.anchorOffset);
     const textBeforeCursor = getTextBeforeCursor(range.anchorNode, range.anchorOffset);
-    const mentionCharIndex = textBeforeCursor.lastIndexOf(mentionOption.mentionDenotationChar);
+    proxyRef.current.mentionCharIndex = textBeforeCursor.lastIndexOf(mentionOption.mentionDenotationChar);
     const validMentions = getValidMentionList(pureTextBeforeCursor);
     setValidMentionList(validMentions);
     if (!_.isEmpty(validMentions)) {
@@ -125,19 +125,11 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     else if (!!proxyRef.current.anchorEl) {
       hideDropdown();
     }
-    // console.log('range', range);
-    // console.dir( textareaElement);
-    // console.log('innerText', innerText);
-    // console.log('innerTextLength', innerText?.length);
-    // console.log('textBeforeCursor', textBeforeCursor);
-    // console.log('validMentions', validMentions);
-    // console.log('pureTextBeforeCursor', pureTextBeforeCursor);
   }
 
   const showDropdown = () => {
     document.addEventListener('mousedown', handleDocumentClick, false);
     document.addEventListener('keydown', onKeydown);
-    (textareaRef.current as HTMLDivElement).addEventListener('keydown', preventDefaultTextAreaKeyPressDownOrUP)
     // @ts-ignore
     setAnchorEl(textareaRef.current);
   };
@@ -145,7 +137,6 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const hideDropdown = () => {
     document.removeEventListener('mousedown', handleDocumentClick, false);
     document.removeEventListener('keydown', onKeydown);
-    (textareaRef.current as HTMLDivElement).removeEventListener('keydown', preventDefaultTextAreaKeyPressDownOrUP)
 
     setAnchorEl(null);
   };
@@ -161,6 +152,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     }
 
     if (key === 'ArrowUp' || key === 'ArrowDown') {
+      e.preventDefault();
       return cycleSelection(key === 'ArrowUp' ? -1 : 1);
     }
 
@@ -172,7 +164,23 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   };
 
   const appendMentionMark = (item: MentionItem) => {
-    console.log(item);
+    const textareaElement = textareaRef.current as any;
+    console.log('new Range', new Range())
+    console.log('createRange', document.createRange())
+    console.log('getSelection()', document.getSelection())
+    console.log('getRangeAt()', document.getSelection()?.getRangeAt(0))
+    console.log(textareaElement.setRangeText);
+    // const range = getSelection();
+    // range?.getRangeAt(0).deleteContents()
+    // try {
+    //   console.log('getRangeAt', range?.getRangeAt(0));
+    //   console.log('rangeCount', range?.rangeCount);
+    // }
+    // catch (e) {
+    //   console.error(e);
+    // }
+
+    // range.removeRange(range.getRangeAt(1))
   }
 
   const cycleSelection = (dir: 1 | -1) => setIntendedKey(prevState => {
@@ -209,19 +217,10 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     return [];
   };
 
-  const preventDefaultTextAreaKeyPressDownOrUP = (event: KeyboardEvent) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-    }
-  }
-
 
   return (<>
       <Textarea {...props} hasEmpty={hasEmpty} contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
         {value}
-        <MentionMark mentionOption={mentionOption}>titor Xu</MentionMark>
-        {value}
-        <MentionMark mentionOption={mentionOption}>titor Xu</MentionMark>
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
