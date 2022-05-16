@@ -1,4 +1,4 @@
-import { FC, forwardRef, ReactNode, useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment, useCallback } from 'react';
 import {
   AvatarBed,
   DropdownItem,
@@ -69,10 +69,11 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [validMentionList, setValidMentionList] = useState<Array<MentionItem>>([]);
   const [searchText, setSearchText] = useState('');
+  const [intendedKey, setIntendedKey] = useState<number>(0)
 
   const textareaRef = useRef<ReactNode>(ref);
   const mentionItemsWrapperRef = useRef();
-  const proxyRef = useRef({anchorEl});
+  const proxyRef = useRef({anchorEl, validMentionList, intendedKey});
 
   useEffect(() => {
     textareaObserver.current.observe(textareaRef.current as Node, {
@@ -89,9 +90,12 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   }, [anchorEl])
 
   useEffect(() => {
-    console.log('validMentionList', validMentionList);
-
+    proxyRef.current.validMentionList = validMentionList;
   }, [validMentionList]);
+
+  useEffect(() => {
+    proxyRef.current.intendedKey = intendedKey;
+  }, [intendedKey]);
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => doSomething()));
 
@@ -126,13 +130,14 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     // console.log('innerText', innerText);
     // console.log('innerTextLength', innerText?.length);
     // console.log('textBeforeCursor', textBeforeCursor);
-    console.log('validMentions', validMentions);
-    console.log('pureTextBeforeCursor', pureTextBeforeCursor);
+    // console.log('validMentions', validMentions);
+    // console.log('pureTextBeforeCursor', pureTextBeforeCursor);
   }
 
   const showDropdown = () => {
     document.addEventListener('mousedown', handleDocumentClick, false);
     document.addEventListener('keydown', onKeydown);
+    (textareaRef.current as HTMLDivElement).addEventListener('keydown', preventDefaultTextAreaKeyPressDownOrUP)
     // @ts-ignore
     setAnchorEl(textareaRef.current);
   };
@@ -140,16 +145,46 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const hideDropdown = () => {
     document.removeEventListener('mousedown', handleDocumentClick, false);
     document.removeEventListener('keydown', onKeydown);
+    (textareaRef.current as HTMLDivElement).removeEventListener('keydown', preventDefaultTextAreaKeyPressDownOrUP)
+
     setAnchorEl(null);
   };
 
   const handleDocumentClick = (e: Event) => {
+    e.preventDefault();
+  };
+
+  const onKeydown = (e: KeyboardEvent) => {
+    const {key} = e;
+    if (key === 'Escape') {
+      return hideDropdown();
+    }
+
+    if (key === 'ArrowUp' || key === 'ArrowDown') {
+      return cycleSelection(key === 'ArrowUp' ? -1 : 1);
+    }
+
+    if (key === 'Enter') {
+      e.preventDefault();
+      appendMentionMark(proxyRef.current.validMentionList[proxyRef.current.intendedKey])
+    }
 
   };
 
-  const onKeydown = (e: Event) => {
+  const appendMentionMark = (item: MentionItem) => {
+    console.log(item);
+  }
 
-  };
+  const cycleSelection = (dir: 1 | -1) => setIntendedKey(prevState => {
+    let countIntendedKey = prevState + dir;
+    if (countIntendedKey === proxyRef.current.validMentionList.length) {
+      countIntendedKey = 0;
+    }
+    else if (countIntendedKey < 0) {
+      countIntendedKey = proxyRef.current.validMentionList.length - 1;
+    }
+    return countIntendedKey;
+  });
 
   const getTextBeforeCursor = (nodeBeforeCursor: Node | null | undefined, lastNodeCursorIndex: number) => {
     let text = nodeBeforeCursor?.textContent?.slice(0, lastNodeCursorIndex);
@@ -174,6 +209,12 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     return [];
   };
 
+  const preventDefaultTextAreaKeyPressDownOrUP = (event: KeyboardEvent) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+    }
+  }
+
 
   return (<>
       <Textarea {...props} hasEmpty={hasEmpty} contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
@@ -186,8 +227,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
         <MentionItemsWrapper name='popover-content'
           width={mentionOption.listWidth}
           ref={mentionItemsWrapperRef}>
-          {validMentionList.map(item => (
-            <DropdownItem key={item.id}>
+          {validMentionList.map((item, i) => (
+            <DropdownItem key={item.id} isIntended={intendedKey === i} onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
               <AvatarBed>
                 <Avatar alt={item.name} src={item.avatarUrl}/>
               </AvatarBed>

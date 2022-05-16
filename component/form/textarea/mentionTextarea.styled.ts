@@ -38,9 +38,12 @@ export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: nu
   text-align: left;
 `
 
-export const DropdownItem = styled.div`
+export const DropdownItem = styled.div<{isIntended: boolean}>`
   flex:0 0 50px;
   display: flex;
+  background-color: ${({isIntended, theme}) => isIntended ? theme.state.color.elementSelected : 'transparent'};
+  user-select: none;
+  cursor: pointer;
 `;
 
 export const AvatarBed = styled.div`
