@@ -1,4 +1,4 @@
-import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment, useCallback } from 'react';
+import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment, useCallback, useContext } from 'react';
 import {
   AvatarBed,
   DropdownItem,
@@ -6,12 +6,12 @@ import {
   DropdownItemTextBed,
   DropdownItemTitle,
   MentionItemsWrapper,
-  MentionMarkSpan,
   Textarea,
   HighlightedMark
 } from './mentionTextarea.styled';
 import * as _ from 'lodash';
 import { Avatar, Popper } from '@material-ui/core';
+import { useTheme } from 'styled-components';
 
 interface MentionTextarea {
   mentionOption: {
@@ -36,11 +36,11 @@ export const defaultMentionOption = {
   listWidth: undefined
 };
 
-const Highlighted = ({ text = "", highlight = "" }) => {
+const Highlighted = ({ text = '', highlight = '' }) => {
   if (!highlight.trim()) {
     return <Fragment>{text}</Fragment>;
   }
-  const regex = new RegExp(`(${highlight})`, "gi");
+  const regex = new RegExp(`(${highlight})`, 'gi');
   const parts = text.split(regex);
 
   return (
@@ -55,12 +55,6 @@ const Highlighted = ({ text = "", highlight = "" }) => {
     </Fragment>
   );
 };
-// @ts-ignore
-const MentionMark = (props) => {
-  const { children, mentionOption } = props;
-  return <>
-    <MentionMarkSpan contentEditable={false}>{mentionOption.mentionDenotationChar}{children}</MentionMarkSpan>&#8203;</>;
-};
 
 export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const { mentionOption, value } = props;
@@ -69,11 +63,14 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [validMentionList, setValidMentionList] = useState<Array<MentionItem>>([]);
   const [searchText, setSearchText] = useState('');
-  const [intendedKey, setIntendedKey] = useState<number>(0)
+  const [intendedKey, setIntendedKey] = useState<number>(0);
 
   const textareaRef = useRef<ReactNode>(ref);
   const mentionItemsWrapperRef = useRef();
-  const proxyRef = useRef({anchorEl, validMentionList, intendedKey, mentionCharIndex: 0});
+  const proxyRef = useRef({ anchorEl, validMentionList, intendedKey, mentionCharIndex: 0, searchText: '' });
+
+  const theme = useTheme();
+
 
   useEffect(() => {
     textareaObserver.current.observe(textareaRef.current as Node, {
@@ -87,7 +84,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   useEffect(() => {
     proxyRef.current.anchorEl = anchorEl;
-  }, [anchorEl])
+  }, [anchorEl]);
 
   useEffect(() => {
     proxyRef.current.validMentionList = validMentionList;
@@ -96,6 +93,10 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   useEffect(() => {
     proxyRef.current.intendedKey = intendedKey;
   }, [intendedKey]);
+
+  useEffect(() => {
+    proxyRef.current.searchText = searchText;
+  }, [searchText]);
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => doSomething()));
 
@@ -125,7 +126,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     else if (!!proxyRef.current.anchorEl) {
       hideDropdown();
     }
-  }
+  };
 
   const showDropdown = () => {
     document.addEventListener('mousedown', handleDocumentClick, false);
@@ -137,7 +138,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const hideDropdown = () => {
     document.removeEventListener('mousedown', handleDocumentClick, false);
     document.removeEventListener('keydown', onKeydown);
-
+    setSearchText('');
     setAnchorEl(null);
   };
 
@@ -146,7 +147,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   };
 
   const onKeydown = (e: KeyboardEvent) => {
-    const {key} = e;
+    const { key } = e;
     if (key === 'Escape') {
       return hideDropdown();
     }
@@ -158,30 +159,43 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
     if (key === 'Enter') {
       e.preventDefault();
-      appendMentionMark(proxyRef.current.validMentionList[proxyRef.current.intendedKey])
+      appendMentionMark(proxyRef.current.validMentionList[proxyRef.current.intendedKey]);
+      hideDropdown();
     }
 
   };
 
   const appendMentionMark = (item: MentionItem) => {
-    const textareaElement = textareaRef.current as any;
-    console.log('new Range', new Range())
-    console.log('createRange', document.createRange())
-    console.log('getSelection()', document.getSelection())
-    console.log('getRangeAt()', document.getSelection()?.getRangeAt(0))
-    console.log(textareaElement.setRangeText);
-    // const range = getSelection();
-    // range?.getRangeAt(0).deleteContents()
-    // try {
-    //   console.log('getRangeAt', range?.getRangeAt(0));
-    //   console.log('rangeCount', range?.rangeCount);
-    // }
-    // catch (e) {
-    //   console.error(e);
-    // }
+    removeDenotationCharAndSearchText();
+    const mentionSpan = document.createElement('span');
+    // @ts-ignore
+    mentionSpan.style.color = theme['text'].color.primary;
+    mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
+    mentionSpan.contentEditable = 'false';
+    mentionSpan.style.userSelect = 'none';
+    (mentionSpan as any).mentionData = item;
+    const cursorRange = getSelection()?.getRangeAt(0);
 
-    // range.removeRange(range.getRangeAt(1))
-  }
+    cursorRange?.insertNode(mentionSpan);
+
+      // @ts-ignore
+    getSelection()?.collapse(getSelection()?.anchorNode?.nextSibling?.nextSibling, 0);
+    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode( '\u00A0' ));
+    // @ts-ignore
+    getSelection()?.collapseToEnd();
+  };
+
+  const removeDenotationCharAndSearchText = () => {
+    const range = getSelection()?.getRangeAt(0);
+    if (!range) {
+      return;
+    }
+    const rangeText = range.endContainer.textContent;
+    const cursorPos = range.endOffset;
+    const searchText = proxyRef.current.searchText;
+    range.endContainer.textContent = String(rangeText?.slice(0, cursorPos - (searchText.length + 1))) + String(rangeText?.slice(cursorPos, rangeText.length + 1));
+    getSelection()?.collapse(range.endContainer, cursorPos - (searchText.length + 1));
+  };
 
   const cycleSelection = (dir: 1 | -1) => setIntendedKey(prevState => {
     let countIntendedKey = prevState + dir;
@@ -209,8 +223,9 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       const toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
       setSearchText(toBeMatchedText || '');
       if (toBeMatchedText && toBeMatchedText !== '') {
-        return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(toBeMatchedText,'i')) !== -1);
-      } else  {
+        return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(toBeMatchedText, 'i')) !== -1);
+      }
+      else {
         return mentionOption.canMentionList;
       }
     }
@@ -224,12 +239,12 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
-          width={mentionOption.listWidth}
-          ref={mentionItemsWrapperRef}>
+                             width={mentionOption.listWidth}
+                             ref={mentionItemsWrapperRef}>
           {validMentionList.map((item, i) => (
             <DropdownItem key={item.id} isIntended={intendedKey === i} onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
               <AvatarBed>
-                <Avatar alt={item.name} src={item.avatarUrl}/>
+                <Avatar alt={item.name} src={item.avatarUrl} />
               </AvatarBed>
               <DropdownItemTextBed>
                 <DropdownItemTitle> <Highlighted text={item.name} highlight={searchText} /></DropdownItemTitle>

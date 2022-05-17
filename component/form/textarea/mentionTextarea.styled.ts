@@ -10,16 +10,13 @@ const placeholder = css`
   }
 `
 
-const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boolean, marginTop?: string, fontSize?: string, minHeight?: string}>`
+export const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boolean, marginTop?: string, fontSize?: string, minHeight?: string}>`
   ${TextareaStyle};
   display: block;
 
   ${({hasEmpty}) => hasEmpty ? placeholder : ''}
 
 
-`
-const MentionMarkSpan = styled.span`
-  color: ${({theme}) => theme.text.color.primary};
 `
 
 export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: number | undefined}>`
@@ -69,6 +66,4 @@ export const DropdownItemSubtitle = styled.div`
 
 export const HighlightedMark = styled.mark`
   font-weight: ${({theme}) => theme.text.weight.medium};
-`
-
-export { Textarea, MentionMarkSpan }
+`;

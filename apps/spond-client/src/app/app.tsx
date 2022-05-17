@@ -26,7 +26,7 @@ const mentionList: Array<MentionItem> = [
 
 export function App() {
   const initialValues = {
-    textarea : '111',
+    textarea : '12345678',
     normal: ''
   }
   const FormSchema = Yup.object().shape({})
