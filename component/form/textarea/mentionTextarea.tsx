@@ -60,14 +60,14 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const { mentionOption, value } = props;
 
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<any>(null);
   const [validMentionList, setValidMentionList] = useState<Array<MentionItem>>([]);
   const [searchText, setSearchText] = useState('');
   const [intendedKey, setIntendedKey] = useState<number>(0);
 
   const textareaRef = useRef<ReactNode>(ref);
   const mentionItemsWrapperRef = useRef();
-  const proxyRef = useRef({ anchorEl, validMentionList, intendedKey, mentionCharIndex: 0, searchText: '' });
+  const proxyRef = useRef({ anchorEl, validMentionList, intendedKey, searchText: '' });
 
   const theme = useTheme();
 
@@ -92,31 +92,34 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   useEffect(() => {
     proxyRef.current.intendedKey = intendedKey;
+    // if (mentionItemsWrapperRef.current) {
+    //   const mentionItemsWrapper = mentionItemsWrapperRef.current as Element;
+    //   (mentionItemsWrapper.childNodes[intendedKey] as Element).scrollIntoView(false);
+    // }
   }, [intendedKey]);
 
   useEffect(() => {
     proxyRef.current.searchText = searchText;
   }, [searchText]);
 
-  const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => doSomething()));
-
-  const doSomething = () => {
+  const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
     const range = getSelection();
     const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
 
-    if (isInnerTextEmpty || range?.anchorNode == null) {
+    if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
       if (!!proxyRef.current.anchorEl) {
         hideDropdown();
       }
       return;
     }
     const pureTextBeforeCursor = range.anchorNode.textContent?.slice(0, range.anchorOffset);
-    const textBeforeCursor = getTextBeforeCursor(range.anchorNode, range.anchorOffset);
-    proxyRef.current.mentionCharIndex = textBeforeCursor.lastIndexOf(mentionOption.mentionDenotationChar);
     const validMentions = getValidMentionList(pureTextBeforeCursor);
+    if (!validMentions) {
+      return;
+    }
     setValidMentionList(validMentions);
     if (!_.isEmpty(validMentions)) {
       if (!proxyRef.current.anchorEl) {
@@ -126,19 +129,17 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     else if (!!proxyRef.current.anchorEl) {
       hideDropdown();
     }
-  };
+  }));
 
   const showDropdown = () => {
     document.addEventListener('mousedown', handleDocumentClick, false);
     document.addEventListener('keydown', onKeydown);
-    // @ts-ignore
     setAnchorEl(textareaRef.current);
   };
 
   const hideDropdown = () => {
     document.removeEventListener('mousedown', handleDocumentClick, false);
     document.removeEventListener('keydown', onKeydown);
-    setSearchText('');
     setAnchorEl(null);
   };
 
@@ -168,20 +169,17 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const appendMentionMark = (item: MentionItem) => {
     removeDenotationCharAndSearchText();
     const mentionSpan = document.createElement('span');
-    // @ts-ignore
-    mentionSpan.style.color = theme['text'].color.primary;
+    mentionSpan.style.color = (theme as any)['text'].color.primary;
     mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
     mentionSpan.contentEditable = 'false';
-    mentionSpan.style.userSelect = 'none';
+    // mentionSpan.style.userSelect = 'none';
     (mentionSpan as any).mentionData = item;
     const cursorRange = getSelection()?.getRangeAt(0);
 
     cursorRange?.insertNode(mentionSpan);
 
-      // @ts-ignore
-    getSelection()?.collapse(getSelection()?.anchorNode?.nextSibling?.nextSibling, 0);
-    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode( '\u00A0' ));
-    // @ts-ignore
+    getSelection()?.collapse((getSelection()?.anchorNode?.nextSibling?.nextSibling as Node), 0);
+    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u00A0'));
     getSelection()?.collapseToEnd();
   };
 
@@ -208,22 +206,18 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     return countIntendedKey;
   });
 
-  const getTextBeforeCursor = (nodeBeforeCursor: Node | null | undefined, lastNodeCursorIndex: number) => {
-    let text = nodeBeforeCursor?.textContent?.slice(0, lastNodeCursorIndex);
-    nodeBeforeCursor = nodeBeforeCursor?.previousSibling;
-    while (nodeBeforeCursor != null && text != null) {
-      text = nodeBeforeCursor.textContent + text;
-      nodeBeforeCursor = nodeBeforeCursor.previousSibling;
-    }
-    return text || '';
-  };
-
   const getValidMentionList = (pureTextBeforeCursor: string | undefined) => {
     if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
       const toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
+      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;.:+_-]+/g) != -1) {
+        if (!!proxyRef.current.anchorEl) {
+          hideDropdown();
+        }
+        return null;
+      }
       setSearchText(toBeMatchedText || '');
       if (toBeMatchedText && toBeMatchedText !== '') {
-        return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(toBeMatchedText, 'i')) !== -1);
+        return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${toBeMatchedText})`, 'gi')) !== -1);
       }
       else {
         return mentionOption.canMentionList;
