@@ -1,17 +1,12 @@
-import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment } from 'react';
-import {
-  AvatarBed,
-  DropdownItem,
-  DropdownItemSubtitle,
-  DropdownItemTextBed,
-  DropdownItemTitle,
-  MentionItemsWrapper,
-  Textarea,
-  HighlightedMark
-} from './mentionTextarea.styled';
+import { FC, forwardRef, Fragment, ReactNode, useEffect, useRef, useState } from 'react';
+import { AvatarBed, DropdownItem, DropdownItemSubtitle, DropdownItemTextBed, DropdownItemTitle, HighlightedMark, MentionItemsWrapper, Textarea } from './mentionTextarea.styled';
 import * as _ from 'lodash';
 import { Avatar, Popper } from '@material-ui/core';
 import { useTheme } from 'styled-components';
+
+interface MentionSpan extends HTMLSpanElement {
+  getMentionData?(): MentionItem;
+}
 
 interface MentionTextarea {
   mentionOption: {
@@ -89,6 +84,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       text && document.execCommand('insertText', false, text);
     });
 
+    (editableTextarea as any).getMentionData = getMentionData();
+
     return () => textareaObserver.current.disconnect();
   }, []);
 
@@ -108,9 +105,15 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     proxyRef.current.searchText = searchText;
   }, [searchText]);
 
+  useEffect(() => {
+    getMentionData()
+
+  }, [value]);
+
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
+    getMentionData();
     const range = getSelection();
     const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
@@ -133,6 +136,29 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       hideDropdown();
     }
   }));
+
+  const getMentionData = () => {
+    const textareaElement = textareaRef.current as HTMLDivElement;
+    let text = '';
+    const mentions: Array<MentionItem> = [];
+    textareaElement.childNodes.forEach((child, index, parent) => {
+      if (child.nodeName === '#text') {
+        text += child.nodeValue;
+      }
+      else if (child?.nodeName === 'SPAN') {
+        const data: MentionItem = (child as any).getMentionData();
+        if (data) {
+          text += '\uE001';
+          mentions.push(data);
+        }
+      }
+    })
+    console.dir(textareaElement);
+    return {
+      text,
+      mentions
+    };
+  }
 
   const showDropdown = () => {
     if (!!!proxyRef.current.anchorEl) {
@@ -175,12 +201,12 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const appendMentionMark = (item: MentionItem) => {
     removeDenotationCharAndSearchText();
-    const mentionSpan = document.createElement('span');
+    const mentionSpan: MentionSpan = document.createElement('span');
     mentionSpan.style.color = (theme as any)['text'].color.primary;
     mentionSpan.style.cursor = 'pointer';
     mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
     mentionSpan.contentEditable = 'false';
-    (mentionSpan as any).mentionData = item;
+    mentionSpan.getMentionData = () => item;
     mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
     const cursorRange = getSelection()?.getRangeAt(0);
 
@@ -251,8 +277,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   return (<>
-      <Textarea {...props} hasEmpty={hasEmpty} contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
-        {value}
+      <Textarea {...props} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
+        {/*{value}*/}
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
@@ -264,7 +290,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
                 <Avatar alt={item.name} src={item.avatarUrl} />
               </AvatarBed>
               <DropdownItemTextBed>
-                <DropdownItemTitle> <Highlighted text={item.name} highlight={searchText} /></DropdownItemTitle>
+                <DropdownItemTitle><Highlighted text={item.name} highlight={searchText} /></DropdownItemTitle>
                 <DropdownItemSubtitle><Highlighted text={item.subTitle} highlight={searchText} /></DropdownItemSubtitle>
               </DropdownItemTextBed>
             </DropdownItem>

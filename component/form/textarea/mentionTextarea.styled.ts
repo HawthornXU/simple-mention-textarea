@@ -13,6 +13,10 @@ const placeholder = css`
 export const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boolean, marginTop?: string, fontSize?: string, minHeight?: string}>`
   ${TextareaStyle};
   display: block;
+  outline: none;
+  user-select: text;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 
   ${({hasEmpty}) => hasEmpty ? placeholder : ''}
 
