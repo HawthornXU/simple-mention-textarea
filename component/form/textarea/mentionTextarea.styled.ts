@@ -21,14 +21,12 @@ export const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boole
 
 export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: number | undefined}>`
   background-color: white;
-  border: 1px solid ${({theme}) => theme.border.color.light};
   border-radius: ${({theme}) => theme.border.radius.menu};
   box-shadow: ${({theme}) => theme.border.shadow.regular};
   display: flex;
   overflow-y: auto;
   flex-direction: column;
   list-style: none;
-  margin-top: 5px;
   min-width: 300px;
   width: ${({width}) => width || 'auto'};
   max-height: 175px;

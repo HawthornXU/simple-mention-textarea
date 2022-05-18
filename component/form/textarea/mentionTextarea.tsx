@@ -1,4 +1,4 @@
-import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment, useCallback, useContext } from 'react';
+import { FC, forwardRef, ReactNode, useEffect, useRef, useState, Fragment } from 'react';
 import {
   AvatarBed,
   DropdownItem,
@@ -19,6 +19,9 @@ interface MentionTextarea {
     canMentionList: Array<MentionItem>,
     listWidth?: number,
   },
+
+  onMentionClick(e: MouseEvent, mentionData: MentionItem): void,
+
   value: any,
 }
 
@@ -57,7 +60,7 @@ const Highlighted = ({ text = '', highlight = '' }) => {
 };
 
 export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
-  const { mentionOption, value } = props;
+  const { mentionOption, value, onMentionClick } = props;
 
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<any>(null);
@@ -73,10 +76,17 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   useEffect(() => {
-    textareaObserver.current.observe(textareaRef.current as Node, {
+    const editableTextarea = textareaRef.current as HTMLDivElement;
+    textareaObserver.current.observe(editableTextarea, {
       childList: true,
       subtree: true,
       characterData: true
+    });
+
+    editableTextarea.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = e.clipboardData?.getData('text/plain');
+      text && document.execCommand('insertText', false, text);
     });
 
     return () => textareaObserver.current.disconnect();
@@ -92,10 +102,6 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   useEffect(() => {
     proxyRef.current.intendedKey = intendedKey;
-    // if (mentionItemsWrapperRef.current) {
-    //   const mentionItemsWrapper = mentionItemsWrapperRef.current as Element;
-    //   (mentionItemsWrapper.childNodes[intendedKey] as Element).scrollIntoView(false);
-    // }
   }, [intendedKey]);
 
   useEffect(() => {
@@ -108,39 +114,40 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const range = getSelection();
     const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
-
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
-      if (!!proxyRef.current.anchorEl) {
-        hideDropdown();
-      }
-      return;
+      return hideDropdown();
     }
+
     const pureTextBeforeCursor = range.anchorNode.textContent?.slice(0, range.anchorOffset);
-    const validMentions = getValidMentionList(pureTextBeforeCursor);
-    if (!validMentions) {
-      return;
+    const searchText = getSearchText(pureTextBeforeCursor);
+    if (searchText == null) {
+      return hideDropdown();
     }
+
+    const validMentions = getValidMentionList(searchText);
     setValidMentionList(validMentions);
     if (!_.isEmpty(validMentions)) {
-      if (!proxyRef.current.anchorEl) {
-        showDropdown();
-      }
+      showDropdown();
     }
-    else if (!!proxyRef.current.anchorEl) {
+    else {
       hideDropdown();
     }
   }));
 
   const showDropdown = () => {
-    document.addEventListener('mousedown', handleDocumentClick, false);
-    document.addEventListener('keydown', onKeydown);
-    setAnchorEl(textareaRef.current);
+    if (!!!proxyRef.current.anchorEl) {
+      document.addEventListener('mousedown', handleDocumentClick, false);
+      document.addEventListener('keydown', onKeydown);
+      setAnchorEl(textareaRef.current);
+    }
   };
 
   const hideDropdown = () => {
-    document.removeEventListener('mousedown', handleDocumentClick, false);
-    document.removeEventListener('keydown', onKeydown);
-    setAnchorEl(null);
+    if (!!proxyRef.current.anchorEl) {
+      document.removeEventListener('mousedown', handleDocumentClick, false);
+      document.removeEventListener('keydown', onKeydown);
+      setAnchorEl(null);
+    }
   };
 
   const handleDocumentClick = (e: Event) => {
@@ -149,7 +156,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const onKeydown = (e: KeyboardEvent) => {
     const { key } = e;
-    if (key === 'Escape') {
+    if (key === 'Escape' || key === 'ArrowLeft' || key === 'ArrowRight') {
       return hideDropdown();
     }
 
@@ -170,10 +177,11 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     removeDenotationCharAndSearchText();
     const mentionSpan = document.createElement('span');
     mentionSpan.style.color = (theme as any)['text'].color.primary;
+    mentionSpan.style.cursor = 'pointer';
     mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
     mentionSpan.contentEditable = 'false';
-    // mentionSpan.style.userSelect = 'none';
     (mentionSpan as any).mentionData = item;
+    mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
     const cursorRange = getSelection()?.getRangeAt(0);
 
     cursorRange?.insertNode(mentionSpan);
@@ -203,27 +211,42 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     else if (countIntendedKey < 0) {
       countIntendedKey = proxyRef.current.validMentionList.length - 1;
     }
+    setIntendedNodeIntoView(countIntendedKey);
     return countIntendedKey;
   });
 
-  const getValidMentionList = (pureTextBeforeCursor: string | undefined) => {
-    if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
-      const toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
-      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;.:+_-]+/g) != -1) {
-        if (!!proxyRef.current.anchorEl) {
-          hideDropdown();
-        }
-        return null;
+  const setIntendedNodeIntoView = (index: number) => {
+    if (mentionItemsWrapperRef.current) {
+      const mentionItemsWrapper = mentionItemsWrapperRef.current as HTMLDivElement;
+      const intendedNode = mentionItemsWrapper.childNodes[index] as HTMLDivElement;
+      if (intendedNode.offsetTop + intendedNode.offsetHeight > mentionItemsWrapper.clientHeight) {
+        intendedNode.scrollIntoView(false);
       }
-      setSearchText(toBeMatchedText || '');
-      if (toBeMatchedText && toBeMatchedText !== '') {
-        return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${toBeMatchedText})`, 'gi')) !== -1);
-      }
-      else {
-        return mentionOption.canMentionList;
+      else if (intendedNode.offsetTop === 0) {
+        intendedNode.scrollIntoView(true);
       }
     }
-    return [];
+  };
+
+  const getValidMentionList = (toBeMatchedText: string): Array<MentionItem> => {
+    if (toBeMatchedText && toBeMatchedText !== '') {
+      return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${toBeMatchedText})`, 'gi')) !== -1);
+    }
+    else {
+      return mentionOption.canMentionList;
+    }
+  };
+
+  const getSearchText = (pureTextBeforeCursor: string | undefined): string | undefined => {
+    let toBeMatchedText = undefined;
+    if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
+      toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
+      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;.:+_-]+/g) != -1) {
+        toBeMatchedText = undefined;
+      }
+    }
+    setSearchText(toBeMatchedText || '');
+    return toBeMatchedText;
   };
 
 
