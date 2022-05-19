@@ -88,7 +88,9 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const innerText = editableTextarea?.innerText;
     setHasEmpty(!!!innerText?.trim());
 
-    (editableTextarea as any).getMentionData = getMentionData();
+    // (editableTextarea as any).getMentionData = getMentionData();
+
+    (window as any)['getMentionData'] = getMentionData;
 
     return () => textareaObserver.current.disconnect();
   }, []);
@@ -110,7 +112,6 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   }, [searchText]);
 
   useEffect(() => {
-    getMentionData()
 
   }, [value]);
 
@@ -118,7 +119,6 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
     const isInnerTextEmpty = !!!innerText?.trim();
-    getMentionData();
     const range = getSelection();
     setHasEmpty(isInnerTextEmpty);
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
@@ -145,11 +145,52 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     let text = '';
     const mentions: Array<MentionItem> = [];
+    let parseList: Array<ChildNode> = [];
+
+    let node: Array<Node> = []
+    node = getFlatChildNodes(node, textareaElement.childNodes)
+    // nodeList.forEach((childNode, index, parent) => {
+      //   if(childNode.)
+      //   parseListHandle.push(childNode);
+      // });
+    // let parseListHandle: Array<any> = parseList;
+    // while (_.isEmpty(parseListHandle) || parseList.findIndex(item => item.nodeName === 'DIV') !== -1) {
+    //   nodeList.forEach((childNode, index, parent) => {
+    //     parseListHandle.push(childNode);
+    //   });
+    //   const deepNodeIndex = parseListHandle.findIndex(item => item.nodeName === 'DIV');
+    //   if (parseListHandle[deepNodeIndex]) {
+    //     nodeList = parseListHandle[deepNodeIndex].childNodes;
+    //     parseListHandle.splice(deepNodeIndex, 0, '\n');
+    //     parseListHandle[deepNodeIndex + 1] = [];
+    //     parseListHandle = parseListHandle[deepNodeIndex + 1];
+    //   }
+    //
+    // }
+
+    console.log(node);
+
     // do something;
     return {
       text,
       mentions
     };
+  };
+
+  const getFlatChildNodes = (nodes: any, children: any) => {
+    nodes = Array.prototype.slice.call(children);
+    nodes.forEach((item:any, i: number) => {
+      if (item.nodeName === 'DIV') {
+        nodes[i] = getFlatChildNodes(nodes[i], item.childNodes);
+      }
+      if(item.nodeName === 'BR') {
+        nodes[i] = '\br'
+      }
+      if(item.nodeName === '#text') {
+        nodes[i] = item.data;
+      }
+    })
+    return nodes;
   }
 
   const showDropdown = () => {
@@ -269,7 +310,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   return (<>
-      <Textarea {...props} placeholder={placeholder} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
+      <Textarea {...props} placeholder={placeholder} hasEmpty={hasEmpty} role='textbox' aria-multiline='true' contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
