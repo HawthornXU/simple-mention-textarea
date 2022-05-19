@@ -18,6 +18,7 @@ interface MentionTextarea {
   onMentionClick(e: MouseEvent, mentionData: MentionItem): void,
 
   value: any,
+  placeholder?: string
 }
 
 export interface MentionItem {
@@ -55,7 +56,7 @@ const Highlighted = ({ text = '', highlight = '' }) => {
 };
 
 export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
-  const { mentionOption, value, onMentionClick } = props;
+  const { mentionOption, value, onMentionClick, placeholder } = props;
 
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<any>(null);
@@ -83,6 +84,9 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       const text = e.clipboardData?.getData('text/plain');
       text && document.execCommand('insertText', false, text);
     });
+
+    const innerText = editableTextarea?.innerText;
+    setHasEmpty(!!!innerText?.trim());
 
     (editableTextarea as any).getMentionData = getMentionData();
 
@@ -113,9 +117,9 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
+    const isInnerTextEmpty = !!!innerText?.trim();
     getMentionData();
     const range = getSelection();
-    const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
       return hideDropdown();
@@ -141,19 +145,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     let text = '';
     const mentions: Array<MentionItem> = [];
-    textareaElement.childNodes.forEach((child, index, parent) => {
-      if (child.nodeName === '#text') {
-        text += child.nodeValue;
-      }
-      else if (child?.nodeName === 'SPAN') {
-        const data: MentionItem = (child as any).getMentionData();
-        if (data) {
-          text += '\uE001';
-          mentions.push(data);
-        }
-      }
-    })
-    console.dir(textareaElement);
+    // do something;
     return {
       text,
       mentions
@@ -267,7 +259,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     let toBeMatchedText = undefined;
     if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
       toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
-      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;.:+_-]+/g) != -1) {
+      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;:+]+/g) != -1) {
         toBeMatchedText = undefined;
       }
     }
@@ -277,8 +269,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   return (<>
-      <Textarea {...props} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
-        {/*{value}*/}
+      <Textarea {...props} placeholder={placeholder} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
