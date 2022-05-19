@@ -6,6 +6,9 @@ import * as Yup from 'yup';
 import { FormikHelpers } from 'formik/dist/types';
 import { defaultMentionOption, MentionItem } from '../../../../component/form/textarea/mentionTextarea';
 import styled from 'styled-components';
+import { SimpleMentionEditor } from './SimpleMentionEditor/SimpleMentionEditor';
+import '@draft-js-plugins/mention/lib/plugin.css';
+
 
 export const TextareaBed = styled.div`
   margin-top: 200px;
@@ -65,6 +68,7 @@ export function App() {
               minHeight="76px"
               size={SizeChart.FULL}
               maxLength={10000}/>
+            <SimpleMentionEditor/>
           </form>
         )
       }
