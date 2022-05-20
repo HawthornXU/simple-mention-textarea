@@ -1,5 +1,14 @@
 import { FC, forwardRef, Fragment, ReactNode, useEffect, useRef, useState } from 'react';
-import { AvatarBed, DropdownItem, DropdownItemSubtitle, DropdownItemTextBed, DropdownItemTitle, HighlightedMark, MentionItemsWrapper, Textarea } from './mentionTextarea.styled';
+import {
+  AvatarBed,
+  DropdownItem,
+  DropdownItemSubtitle,
+  DropdownItemTextBed,
+  DropdownItemTitle,
+  HighlightedMark,
+  MentionItemsWrapper,
+  Textarea
+} from './mentionTextarea.styled';
 import * as _ from 'lodash';
 import { Avatar, Popper } from '@material-ui/core';
 import { useTheme } from 'styled-components';
@@ -88,9 +97,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const innerText = editableTextarea?.innerText;
     setHasEmpty(!!!innerText?.trim());
 
-    // (editableTextarea as any).getMentionData = getMentionData();
-
-    (window as any)['getMentionData'] = getMentionData;
+    (editableTextarea as any).getMentionData = getMentionData();
 
     return () => textareaObserver.current.disconnect();
   }, []);
@@ -135,8 +142,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     setValidMentionList(validMentions);
     if (!_.isEmpty(validMentions)) {
       showDropdown();
-    }
-    else {
+    } else {
       hideDropdown();
     }
   }));
@@ -145,53 +151,34 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     let text = '';
     const mentions: Array<MentionItem> = [];
-    let parseList: Array<ChildNode> = [];
-
-    let node: Array<Node> = []
-    node = getFlatChildNodes(node, textareaElement.childNodes)
-    // nodeList.forEach((childNode, index, parent) => {
-      //   if(childNode.)
-      //   parseListHandle.push(childNode);
-      // });
-    // let parseListHandle: Array<any> = parseList;
-    // while (_.isEmpty(parseListHandle) || parseList.findIndex(item => item.nodeName === 'DIV') !== -1) {
-    //   nodeList.forEach((childNode, index, parent) => {
-    //     parseListHandle.push(childNode);
-    //   });
-    //   const deepNodeIndex = parseListHandle.findIndex(item => item.nodeName === 'DIV');
-    //   if (parseListHandle[deepNodeIndex]) {
-    //     nodeList = parseListHandle[deepNodeIndex].childNodes;
-    //     parseListHandle.splice(deepNodeIndex, 0, '\n');
-    //     parseListHandle[deepNodeIndex + 1] = [];
-    //     parseListHandle = parseListHandle[deepNodeIndex + 1];
-    //   }
-    //
-    // }
-
-    console.log(node);
-
-    // do something;
+    let parseList: Array<any> = [];
+    parseList = parseRichNodeList(parseList, mentions, textareaElement.childNodes);
+    text = parseList.join('');
     return {
       text,
       mentions
     };
   };
 
-  const getFlatChildNodes = (nodes: any, children: any) => {
-    nodes = Array.prototype.slice.call(children);
-    nodes.forEach((item:any, i: number) => {
-      if (item.nodeName === 'DIV') {
-        nodes[i] = getFlatChildNodes(nodes[i], item.childNodes);
+  const parseRichNodeList = (list: Array<any>, mentions: Array<any>, childNodes: any) => {
+    childNodes.forEach((item: any, index: number) => {
+      if (item.nodeName === '#text') {
+        list.push(item.data);
+      } else if (item.nodeName === 'BR') {
+        list.push('\br');
+      } else if (item.nodeName === 'DIV') {
+        if (list[index - 1] !== '\br') {
+          list.push('\br');
+        }
+        list = parseRichNodeList(list, mentions, item.childNodes);
+      } else if (item.nodeName === 'SPAN') {
+        list.push('\uE001');
+        mentions.push(item.getMentionData());
       }
-      if(item.nodeName === 'BR') {
-        nodes[i] = '\br'
-      }
-      if(item.nodeName === '#text') {
-        nodes[i] = item.data;
-      }
-    })
-    return nodes;
-  }
+    });
+
+    return list;
+  };
 
   const showDropdown = () => {
     if (!!!proxyRef.current.anchorEl) {
@@ -266,8 +253,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     let countIntendedKey = prevState + dir;
     if (countIntendedKey === proxyRef.current.validMentionList.length) {
       countIntendedKey = 0;
-    }
-    else if (countIntendedKey < 0) {
+    } else if (countIntendedKey < 0) {
       countIntendedKey = proxyRef.current.validMentionList.length - 1;
     }
     setIntendedNodeIntoView(countIntendedKey);
@@ -280,8 +266,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       const intendedNode = mentionItemsWrapper.childNodes[index] as HTMLDivElement;
       if (intendedNode.offsetTop + intendedNode.offsetHeight > mentionItemsWrapper.clientHeight) {
         intendedNode.scrollIntoView(false);
-      }
-      else if (intendedNode.offsetTop === 0) {
+      } else if (intendedNode.offsetTop === 0) {
         intendedNode.scrollIntoView(true);
       }
     }
@@ -290,8 +275,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   const getValidMentionList = (toBeMatchedText: string): Array<MentionItem> => {
     if (toBeMatchedText && toBeMatchedText !== '') {
       return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${toBeMatchedText})`, 'gi')) !== -1);
-    }
-    else {
+    } else {
       return mentionOption.canMentionList;
     }
   };
@@ -314,8 +298,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
-                             width={mentionOption.listWidth}
-                             ref={mentionItemsWrapperRef}>
+          width={mentionOption.listWidth}
+          ref={mentionItemsWrapperRef}>
           {validMentionList.map((item, i) => (
             <DropdownItem key={item.id} isIntended={intendedKey === i} onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
               <AvatarBed>
