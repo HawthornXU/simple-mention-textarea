@@ -1,4 +1,4 @@
-import { FC, forwardRef, Fragment, ReactNode, useEffect, useRef, useState } from 'react';
+import { createElement, FC, forwardRef, Fragment, ReactNode, useEffect, useRef, useState } from 'react';
 import {
   AvatarBed,
   DropdownItem,
@@ -6,7 +6,7 @@ import {
   DropdownItemTextBed,
   DropdownItemTitle,
   HighlightedMark,
-  MentionItemsWrapper,
+  MentionItemsWrapper, MentionSpan,
   Textarea
 } from './mentionTextarea.styled';
 import * as _ from 'lodash';
@@ -24,18 +24,26 @@ interface MentionTextarea {
     listWidth?: number,
   },
 
-  onMentionClick(e: MouseEvent, mentionData: MentionItem): void,
+  onMentionClick?(e: MouseEvent, mentionData: MentionItem): void,
 
-  value: any,
-  placeholder?: string
+  value: MentionInputValue,
+  placeholder?: string,
+  style?: any,
+  minHeight?: any,
+  size: any
+}
+
+interface MentionInputValue {
+  text: string,
+  mentions: Array<MentionItem>
 }
 
 export interface MentionItem {
   id: string,
   name: string,
-  subTitle: string,
   avatarUrl: string,
-  context: any
+  subTitle?: string,
+  context?: any
 }
 
 export const defaultMentionOption = {
@@ -44,11 +52,29 @@ export const defaultMentionOption = {
   listWidth: undefined
 };
 
+const getEscapeSearchText = (searchText: string) => searchText?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const RestoreContent: FC<{ value: MentionInputValue, mentionOption: {mentionDenotationChar: string} }>= ({value, mentionOption}) => {
+  const {text, mentions} = value;
+  if (!text.trim() || !text.includes('\uE001')) {
+    return <Fragment>{text}</Fragment>;
+  }
+  const textPart = text.split('\uE001');
+  const mergePart = [];
+  for (let i = 0; i < textPart.length; i++) {
+    mergePart.push(textPart[i]);
+    mentions[i] && mergePart.push(mentions[i]);
+  }
+  return (<>{mergePart.map((part, i) => {
+    return typeof part === 'string' ? <Fragment key={i}>{part}</Fragment> : <MentionSpan key={i}>{mentionOption.mentionDenotationChar + part.name}</MentionSpan>})}
+  </>)
+}
+
 const Highlighted = ({ text = '', highlight = '' }) => {
   if (!highlight.trim()) {
     return <Fragment>{text}</Fragment>;
   }
-  const regex = new RegExp(`(${highlight})`, 'gi');
+  const regex = new RegExp(`(${getEscapeSearchText(highlight)})`, 'gi');
   const parts = text.split(regex);
 
   return (
@@ -65,7 +91,7 @@ const Highlighted = ({ text = '', highlight = '' }) => {
 };
 
 export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
-  const { mentionOption, value, onMentionClick, placeholder } = props;
+  const { mentionOption, value, onMentionClick, placeholder, style } = props;
 
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<any>(null);
@@ -94,10 +120,9 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       text && document.execCommand('insertText', false, text);
     });
 
-    const innerText = editableTextarea?.innerText;
-    setHasEmpty(!!!innerText?.trim());
+    init();
 
-    (editableTextarea as any).getMentionData = getMentionData();
+    (editableTextarea as any).getMentionData = getMentionData;
 
     return () => textareaObserver.current.disconnect();
   }, []);
@@ -118,9 +143,13 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     proxyRef.current.searchText = searchText;
   }, [searchText]);
 
-  useEffect(() => {
-
-  }, [value]);
+  const init = () => {
+    setIntendedKey(0);
+    setSearchText('');
+    const editableTextarea = textareaRef.current as HTMLDivElement;
+    const innerText = editableTextarea?.innerText;
+    setHasEmpty(!!!innerText?.trim());
+  }
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
@@ -193,6 +222,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       document.removeEventListener('mousedown', handleDocumentClick, false);
       document.removeEventListener('keydown', onKeydown);
       setAnchorEl(null);
+      init();
     }
   };
 
@@ -227,13 +257,13 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
     mentionSpan.contentEditable = 'false';
     mentionSpan.getMentionData = () => item;
-    mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
+    onMentionClick && mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
     const cursorRange = getSelection()?.getRangeAt(0);
 
     cursorRange?.insertNode(mentionSpan);
 
     getSelection()?.collapse((getSelection()?.anchorNode?.nextSibling?.nextSibling as Node), 0);
-    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u00A0'));
+    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u200B'));
     getSelection()?.collapseToEnd();
   };
 
@@ -274,7 +304,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const getValidMentionList = (toBeMatchedText: string): Array<MentionItem> => {
     if (toBeMatchedText && toBeMatchedText !== '') {
-      return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${toBeMatchedText})`, 'gi')) !== -1);
+      return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${getEscapeSearchText(toBeMatchedText)})`, 'gi')) !== -1);
     } else {
       return mentionOption.canMentionList;
     }
@@ -284,9 +314,6 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     let toBeMatchedText = undefined;
     if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
       toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
-      if (toBeMatchedText?.search(/[°"§%()\[\]{}=\\?´`'#<>|,;:+]+/g) != -1) {
-        toBeMatchedText = undefined;
-      }
     }
     setSearchText(toBeMatchedText || '');
     return toBeMatchedText;
@@ -294,7 +321,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   return (<>
-      <Textarea {...props} placeholder={placeholder} hasEmpty={hasEmpty} role='textbox' aria-multiline='true' contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
+      <Textarea {...props} style={style} placeholder={placeholder} hasEmpty={hasEmpty} role='textbox' aria-multiline='true' contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
+        {<RestoreContent value={value} mentionOption={mentionOption}/>}
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'

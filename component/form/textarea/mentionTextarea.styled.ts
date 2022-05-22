@@ -67,5 +67,9 @@ export const DropdownItemSubtitle = styled.div`
 `;
 
 export const HighlightedMark = styled.mark`
-  font-weight: ${({theme}) => theme.text.weight.medium};
+  font-weight: ${({theme}) => theme.text.weight.bold};
+`;
+export const MentionSpan = styled.span`
+  color: ${({theme}) => theme.text.color.primary};
+  cursor: pointer;
 `;
