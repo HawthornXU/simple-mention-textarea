@@ -69,21 +69,9 @@ export function App() {
           <form onSubmit={props.handleSubmit} onChange={() => onChangevalue(props.values)}>
             <TextareaBed>
               <MentionTextarea
-                style={{marginTop: '300px'}}
                 placeholder="有什么想和大家分享的？"
-                value={{      text: 'Commenting twice with \uE001 mentioned, along with \uE001',
-                  mentions: [{
-                    "id": "08A4AF93BD56AA031F1E2DEDA34BBA2A",
-                    name: 'Paul Johnson', subTitle: 'Guardian for Robert Johnson', avatarUrl: 'http://placekitten.com/34/34',
-                  },
-                    {
-                      "id": "9ACBC34819C54FC381EAADC363F94E78",
-                      name: 'Robert Johnson', subTitle: 'child of Paul Johnson', avatarUrl: 'http://placekitten.com/34/34',
-                    }
-
-                  ]}}
-                minHeight="76px"
-                size={SizeChart.FULL}
+                value={undefined}
+                disabled={true}
                 mentionOption={{mentionDenotationChar: defaultMentionOption.mentionDenotationChar, canMentionList: mentionList}} />
             </TextareaBed>
 
@@ -93,6 +81,7 @@ export function App() {
               name="normal"
               minHeight="76px"
               size={SizeChart.FULL}
+              disabled={true}
               maxLength={10000}/>
           </form>
         )

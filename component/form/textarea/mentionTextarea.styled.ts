@@ -17,6 +17,9 @@ export const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boole
   user-select: text;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  &:hover {
+    cursor: ${({disabled}) => disabled ? 'default': 'text'}
+  }
 
   ${({hasEmpty}) => hasEmpty ? placeholder : ''}
 

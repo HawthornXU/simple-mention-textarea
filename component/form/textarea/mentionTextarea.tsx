@@ -12,6 +12,7 @@ import {
 import * as _ from 'lodash';
 import { Avatar, Popper } from '@material-ui/core';
 import { useTheme } from 'styled-components';
+import * as React from 'react';
 
 interface MentionSpan extends HTMLSpanElement {
   getMentionData?(): MentionItem;
@@ -24,14 +25,17 @@ interface MentionTextarea {
     listWidth?: number,
   },
 
-  onMentionClick?(e: MouseEvent, mentionData: MentionItem): void,
+  onMentionClick?(e: Event | React.MouseEvent<Element, MouseEvent>, mentionData: MentionItem): void,
 
-  value: MentionInputValue,
+  value?: MentionInputValue,
   placeholder?: string,
   style?: any,
   minHeight?: any,
-  size: any
+  size?: any,
+  disabled?: any
 }
+
+type RestoreContentInput = Pick<MentionTextarea, 'mentionOption' | 'onMentionClick'| 'value' >
 
 interface MentionInputValue {
   text: string,
@@ -54,7 +58,10 @@ export const defaultMentionOption = {
 
 const getEscapeSearchText = (searchText: string) => searchText?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const RestoreContent: FC<{ value: MentionInputValue, mentionOption: {mentionDenotationChar: string} }>= ({value, mentionOption}) => {
+const RestoreContent: FC<RestoreContentInput> = ({value, mentionOption, onMentionClick}) => {
+  if (!!!value) {
+    return <></>;
+  }
   const {text, mentions} = value;
   if (!text.trim() || !text.includes('\uE001')) {
     return <Fragment>{text}</Fragment>;
@@ -65,9 +72,15 @@ const RestoreContent: FC<{ value: MentionInputValue, mentionOption: {mentionDeno
     mergePart.push(textPart[i]);
     mentions[i] && mergePart.push(mentions[i]);
   }
-  return (<>{mergePart.map((part, i) => {
-    return typeof part === 'string' ? <Fragment key={i}>{part}</Fragment> : <MentionSpan key={i}>{mentionOption.mentionDenotationChar + part.name}</MentionSpan>})}
-  </>)
+  return <>{
+    mergePart.map((part, i) =>
+      typeof part === 'string' ?
+        <Fragment key={i}>{part}</Fragment> :
+        <MentionSpan key={i} contentEditable='false' onClick={(e) => onMentionClick && onMentionClick(e, part)} ref={(ref) => {
+          (ref) && ((ref as any).getMentionData = () => part)
+        }}>{mentionOption.mentionDenotationChar + part.name}</MentionSpan>
+    )
+  }</>
 }
 
 const Highlighted = ({ text = '', highlight = '' }) => {
@@ -148,13 +161,13 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     setSearchText('');
     const editableTextarea = textareaRef.current as HTMLDivElement;
     const innerText = editableTextarea?.innerText;
-    setHasEmpty(!!!innerText?.trim());
+    setHasEmpty([undefined, '', '\u200B'].includes(innerText));
   }
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     const textareaElement = textareaRef.current as HTMLDivElement;
     const innerText = textareaElement?.innerText;
-    const isInnerTextEmpty = !!!innerText?.trim();
+    const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     const range = getSelection();
     setHasEmpty(isInnerTextEmpty);
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
@@ -322,7 +335,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   return (<>
       <Textarea {...props} style={style} placeholder={placeholder} hasEmpty={hasEmpty} role='textbox' aria-multiline='true' contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
-        {<RestoreContent value={value} mentionOption={mentionOption}/>}
+        {<RestoreContent value={value} mentionOption={mentionOption} onMentionClick={onMentionClick}/>}
       </Textarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
         <MentionItemsWrapper name='popover-content'
