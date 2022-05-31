@@ -1,4 +1,13 @@
-import { createElement, FC, forwardRef, Fragment, ReactNode, useEffect, useRef, useState } from 'react';
+import React, {
+  DOMAttributes,
+  FC,
+  forwardRef,
+  Fragment,
+  MutableRefObject,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 import {
   AvatarBed,
   DropdownItem,
@@ -6,59 +15,69 @@ import {
   DropdownItemTextBed,
   DropdownItemTitle,
   HighlightedMark,
-  MentionItemsWrapper, MentionSpan,
-  Textarea
+  MentionItemsWrapper,
+  RichTextarea,
+  MentionSpan
 } from './mentionTextarea.styled';
 import * as _ from 'lodash';
 import { Avatar, Popper } from '@material-ui/core';
-import { useTheme } from 'styled-components';
-import * as React from 'react';
+import { ThemedCssFunction, useTheme } from 'styled-components';
 
 interface MentionSpan extends HTMLSpanElement {
   getMentionData?(): MentionItem;
 }
 
-interface MentionTextarea {
+interface MentionTextarea extends DOMAttributes<HTMLDivElement>{
   mentionOption: {
     mentionDenotationChar: string,
     canMentionList: Array<MentionItem>,
     listWidth?: number,
   },
 
+  onValueChange?(value: { text: string, mentions: Array<MentionItem> }): void,
+
   onMentionClick?(e: Event | React.MouseEvent<Element, MouseEvent>, mentionData: MentionItem): void,
 
-  value?: MentionInputValue,
+  value?: MentionValue,
+  marginTop?: string,
+  fontSize?: string,
+  minHeight?: string,
+  name?: string,
   placeholder?: string,
-  style?: any,
-  minHeight?: any,
-  size?: any,
-  disabled?: any
+  maxLength?: number
 }
 
-type RestoreContentInput = Pick<MentionTextarea, 'mentionOption' | 'onMentionClick'| 'value' >
+type RestoreContentInput = Pick<MentionTextarea, 'mentionOption' | 'onMentionClick' | 'value'> & {
+  mentionStyle?: ThemedCssFunction<object>
+};
 
-interface MentionInputValue {
+interface MentionValue {
   text: string,
-  mentions: Array<MentionItem>
+  mentions?: Array<MentionItem>
 }
 
 export interface MentionItem {
   id: string,
   name: string,
-  avatarUrl: string,
-  subTitle?: string,
-  context?: any
+  type?: 'PROFILE' | 'MEMBERSHIP',
+  avatarUrl?: string,
+  subtitle?: string,
+  disabled?: boolean,
 }
 
-export const defaultMentionOption = {
-  mentionDenotationChar: '@',
-  canMentionList: [],
-  listWidth: undefined
-};
+export interface MentionTextareaRef extends HTMLDivElement {
+  getMentionData?(): MentionValue,
 
-const getEscapeSearchText = (searchText: string) => searchText?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  /***
+   * only init component can use it when value !== ''
+   * @param value : MentionValue
+   */
+  setInnerValue?(value: MentionValue): void
+}
 
-const RestoreContent: FC<RestoreContentInput> = ({value, mentionOption, onMentionClick}) => {
+const getEscapeText = (searchText: string) => searchText?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export const RestoreMentionText: FC<RestoreContentInput> = ({value, mentionOption, onMentionClick, mentionStyle}) => {
   if (!!!value) {
     return <></>;
   }
@@ -67,27 +86,24 @@ const RestoreContent: FC<RestoreContentInput> = ({value, mentionOption, onMentio
     return <Fragment>{text}</Fragment>;
   }
   const textPart = text.split('\uE001');
-  const mergePart = [];
-  for (let i = 0; i < textPart.length; i++) {
-    mergePart.push(textPart[i]);
-    mentions[i] && mergePart.push(mentions[i]);
-  }
   return <>{
-    mergePart.map((part, i) =>
-      typeof part === 'string' ?
-        <Fragment key={i}>{part}</Fragment> :
-        <MentionSpan key={i} contentEditable='false' onClick={(e) => onMentionClick && onMentionClick(e, part)} ref={(ref) => {
-          (ref) && ((ref as any).getMentionData = () => part)
-        }}>{mentionOption.mentionDenotationChar + part.name}</MentionSpan>
+    textPart.map((part, i) => (<Fragment key={i}>
+        {part}
+        {mentions && mentions[i] && <MentionSpan mentionStyle={mentionStyle} contentEditable="false"
+                                                 onClick={(e) => onMentionClick && onMentionClick(e, mentions[i])}
+                                                 ref={(ref) => {
+                                                   (ref) && ((ref as any).getMentionData = () => mentions[i]);
+                                                 }}>{mentionOption.mentionDenotationChar + mentions[i].name}</MentionSpan>}
+      </Fragment>)
     )
-  }</>
-}
+  }</>;
+};
 
-const Highlighted = ({ text = '', highlight = '' }) => {
+const Highlighted = ({text = '', highlight = ''}) => {
   if (!highlight.trim()) {
     return <Fragment>{text}</Fragment>;
   }
-  const regex = new RegExp(`(${getEscapeSearchText(highlight)})`, 'gi');
+  const regex = new RegExp(`(${getEscapeText(highlight)})`, 'gi');
   const parts = text.split(regex);
 
   return (
@@ -103,39 +119,47 @@ const Highlighted = ({ text = '', highlight = '' }) => {
   );
 };
 
-export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
-  const { mentionOption, value, onMentionClick, placeholder, style } = props;
+// @ts-ignore
+export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableRefObject<MentionTextareaRef>) => {
+  const {mentionOption, onMentionClick, onValueChange} = props;
 
   const [hasEmpty, setHasEmpty] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<any>(null);
   const [validMentionList, setValidMentionList] = useState<Array<MentionItem>>([]);
   const [searchText, setSearchText] = useState('');
   const [intendedKey, setIntendedKey] = useState<number>(0);
+  const [innerValue, setInnerValue] = useState<MentionValue>({text: '', mentions: []});
 
-  const textareaRef = useRef<ReactNode>(ref);
   const mentionItemsWrapperRef = useRef();
-  const proxyRef = useRef({ anchorEl, validMentionList, intendedKey, searchText: '' });
+
+  // fix stale-closure issue: in closure will captures stale state value
+  const proxyRef = useRef({anchorEl, validMentionList, intendedKey, searchText: '', mentionOption});
 
   const theme = useTheme();
 
 
   useEffect(() => {
-    const editableTextarea = textareaRef.current as HTMLDivElement;
+    const editableTextarea = ref.current;
     textareaObserver.current.observe(editableTextarea, {
       childList: true,
       subtree: true,
       characterData: true
     });
 
+    // Remove styles from pasted text
     editableTextarea.addEventListener('paste', (e) => {
       e.preventDefault();
       const text = e.clipboardData?.getData('text/plain');
       text && document.execCommand('insertText', false, text);
     });
 
-    init();
+    editableTextarea.getMentionData = getMentionData;
+    editableTextarea.setInnerValue = (value) => {
+      editableTextarea.innerHTML !== '' && (editableTextarea.innerHTML = '');
+      value.text !== '' && setInnerValue(value);
+    };
 
-    (editableTextarea as any).getMentionData = getMentionData;
+    init();
 
     return () => textareaObserver.current.disconnect();
   }, []);
@@ -155,21 +179,27 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   useEffect(() => {
     proxyRef.current.searchText = searchText;
   }, [searchText]);
+  useEffect(() => {
+    proxyRef.current.mentionOption = mentionOption;
+  }, [mentionOption]);
+
 
   const init = () => {
     setIntendedKey(0);
     setSearchText('');
-    const editableTextarea = textareaRef.current as HTMLDivElement;
-    const innerText = editableTextarea?.innerText;
+    const innerText = ref.current?.innerText;
     setHasEmpty([undefined, '', '\u200B'].includes(innerText));
-  }
+  };
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
-    const textareaElement = textareaRef.current as HTMLDivElement;
+    onValueChange && onValueChange(getMentionData());
+    const textareaElement = ref.current;
     const innerText = textareaElement?.innerText;
-    const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     const range = getSelection();
+    const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
+
+    // if text before cursor
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
       return hideDropdown();
     }
@@ -184,17 +214,18 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     setValidMentionList(validMentions);
     if (!_.isEmpty(validMentions)) {
       showDropdown();
-    } else {
+    }
+    else {
       hideDropdown();
     }
   }));
 
   const getMentionData = () => {
-    const textareaElement = textareaRef.current as HTMLDivElement;
+    const textareaElement = ref.current;
     let text = '';
     const mentions: Array<MentionItem> = [];
     let parseList: Array<any> = [];
-    parseList = parseRichNodeList(parseList, mentions, textareaElement.childNodes);
+    parseList = parseNodeList(parseList, mentions, textareaElement.childNodes);
     text = parseList.join('');
     return {
       text,
@@ -202,18 +233,21 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     };
   };
 
-  const parseRichNodeList = (list: Array<any>, mentions: Array<any>, childNodes: any) => {
+  const parseNodeList = (list: Array<any>, mentions: Array<any>, childNodes: any) => {
     childNodes.forEach((item: any, index: number) => {
       if (item.nodeName === '#text') {
         list.push(item.data);
-      } else if (item.nodeName === 'BR') {
-        list.push('\br');
-      } else if (item.nodeName === 'DIV') {
+      }
+      else if (item.nodeName === 'BR') {
+        list.push('\n');
+      }
+      else if (item.nodeName === 'DIV') {
         if (list[index - 1] !== '\br') {
-          list.push('\br');
+          list.push('\n');
         }
-        list = parseRichNodeList(list, mentions, item.childNodes);
-      } else if (item.nodeName === 'SPAN') {
+        list = parseNodeList(list, mentions, item.childNodes);
+      }
+      else if (item.nodeName === 'SPAN') {
         list.push('\uE001');
         mentions.push(item.getMentionData());
       }
@@ -226,7 +260,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     if (!!!proxyRef.current.anchorEl) {
       document.addEventListener('mousedown', handleDocumentClick, false);
       document.addEventListener('keydown', onKeydown);
-      setAnchorEl(textareaRef.current);
+      setAnchorEl(ref.current);
     }
   };
 
@@ -244,7 +278,7 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
   };
 
   const onKeydown = (e: KeyboardEvent) => {
-    const { key } = e;
+    const {key} = e;
     if (key === 'Escape' || key === 'ArrowLeft' || key === 'ArrowRight') {
       return hideDropdown();
     }
@@ -264,19 +298,22 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const appendMentionMark = (item: MentionItem) => {
     removeDenotationCharAndSearchText();
+
     const mentionSpan: MentionSpan = document.createElement('span');
     mentionSpan.style.color = (theme as any)['text'].color.primary;
     mentionSpan.style.cursor = 'pointer';
-    mentionSpan.innerText = mentionOption.mentionDenotationChar + item.name;
+    mentionSpan.innerText = proxyRef.current.mentionOption.mentionDenotationChar + item.name;
     mentionSpan.contentEditable = 'false';
     mentionSpan.getMentionData = () => item;
     onMentionClick && mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
     const cursorRange = getSelection()?.getRangeAt(0);
-
     cursorRange?.insertNode(mentionSpan);
 
+    // move cursor to mentionSpan after
     getSelection()?.collapse((getSelection()?.anchorNode?.nextSibling?.nextSibling as Node), 0);
-    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u200B'));
+    // add space in cursor
+    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u00A0'));
+    // move cursor into space after
     getSelection()?.collapseToEnd();
   };
 
@@ -296,7 +333,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
     let countIntendedKey = prevState + dir;
     if (countIntendedKey === proxyRef.current.validMentionList.length) {
       countIntendedKey = 0;
-    } else if (countIntendedKey < 0) {
+    }
+    else if (countIntendedKey < 0) {
       countIntendedKey = proxyRef.current.validMentionList.length - 1;
     }
     setIntendedNodeIntoView(countIntendedKey);
@@ -309,7 +347,8 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
       const intendedNode = mentionItemsWrapper.childNodes[index] as HTMLDivElement;
       if (intendedNode.offsetTop + intendedNode.offsetHeight > mentionItemsWrapper.clientHeight) {
         intendedNode.scrollIntoView(false);
-      } else if (intendedNode.offsetTop === 0) {
+      }
+      else if (intendedNode.offsetTop === 0) {
         intendedNode.scrollIntoView(true);
       }
     }
@@ -317,16 +356,17 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
   const getValidMentionList = (toBeMatchedText: string): Array<MentionItem> => {
     if (toBeMatchedText && toBeMatchedText !== '') {
-      return mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subTitle).search(new RegExp(`(${getEscapeSearchText(toBeMatchedText)})`, 'gi')) !== -1);
-    } else {
-      return mentionOption.canMentionList;
+      return proxyRef.current.mentionOption.canMentionList.filter(mentionItem => (mentionItem.name + mentionItem.subtitle).search(new RegExp(`(${getEscapeText(toBeMatchedText)})`, 'gi')) !== -1);
+    }
+    else {
+      return proxyRef.current.mentionOption.canMentionList;
     }
   };
 
   const getSearchText = (pureTextBeforeCursor: string | undefined): string | undefined => {
     let toBeMatchedText = undefined;
-    if (pureTextBeforeCursor?.includes(mentionOption.mentionDenotationChar)) {
-      toBeMatchedText = pureTextBeforeCursor.split(mentionOption.mentionDenotationChar).pop();
+    if (pureTextBeforeCursor?.includes(proxyRef.current.mentionOption.mentionDenotationChar)) {
+      toBeMatchedText = pureTextBeforeCursor.split(proxyRef.current.mentionOption.mentionDenotationChar).pop();
     }
     setSearchText(toBeMatchedText || '');
     return toBeMatchedText;
@@ -334,21 +374,26 @@ export const MentionTextarea: FC<MentionTextarea> = forwardRef((props, ref) => {
 
 
   return (<>
-      <Textarea {...props} style={style} placeholder={placeholder} hasEmpty={hasEmpty} role='textbox' aria-multiline='true' contentEditable={true} suppressContentEditableWarning={true} ref={textareaRef}>
-        {<RestoreContent value={value} mentionOption={mentionOption} onMentionClick={onMentionClick}/>}
-      </Textarea>
-      <Popper open={!!anchorEl} anchorEl={anchorEl} style={{ zIndex: 10000 }} disablePortal={false} placement={'top-start'}>
-        <MentionItemsWrapper name='popover-content'
-          width={mentionOption.listWidth}
-          ref={mentionItemsWrapperRef}>
+      <RichTextarea {...props} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true}
+                    suppressContentEditableWarning={true} ref={ref}>
+        {<RestoreMentionText value={innerValue} mentionOption={mentionOption} onMentionClick={onMentionClick}/>}
+      </RichTextarea>
+      <Popper open={!!anchorEl} anchorEl={anchorEl} style={{zIndex: 10000}} disablePortal={false}
+              placement={'top-start'}>
+        <MentionItemsWrapper name="popover-content"
+                             width={mentionOption.listWidth}
+                             ref={mentionItemsWrapperRef}>
           {validMentionList.map((item, i) => (
-            <DropdownItem key={item.id} isIntended={intendedKey === i} onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
+            <DropdownItem key={item.id} isIntended={intendedKey === i} disabled={item.disabled}
+                          onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
               <AvatarBed>
                 <Avatar alt={item.name} src={item.avatarUrl} />
               </AvatarBed>
               <DropdownItemTextBed>
-                <DropdownItemTitle><Highlighted text={item.name} highlight={searchText} /></DropdownItemTitle>
-                <DropdownItemSubtitle><Highlighted text={item.subTitle} highlight={searchText} /></DropdownItemSubtitle>
+                <DropdownItemTitle disabled={item.disabled}><Highlighted text={item.name}
+                                                                         highlight={searchText}/></DropdownItemTitle>
+                <DropdownItemSubtitle><Highlighted text={item.subtitle}
+                                                   highlight={searchText}/></DropdownItemSubtitle>
               </DropdownItemTextBed>
             </DropdownItem>
           ))}

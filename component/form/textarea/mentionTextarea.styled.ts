@@ -1,5 +1,5 @@
-import styled, { css } from 'styled-components';
-import { TextareaStyle } from './textarea.styled'
+import styled, { css, ThemedCssFunction } from 'styled-components';
+import { TextareaStyle } from './textarea.styled';
 
 const placeholder = css`
   &::before {
@@ -8,25 +8,20 @@ const placeholder = css`
     color: ${({theme}) => theme.text.color.light};
     position: absolute;
   }
-`
+`;
 
-export const Textarea = styled.div<{ref:any, hasEmpty: boolean, disabled?: boolean, marginTop?: string, fontSize?: string, minHeight?: string}>`
+export const RichTextarea = styled.div<{ ref: any, hasEmpty: boolean, disabled?: boolean, marginTop?: string, fontSize?: string, minHeight?: string, name?: string}>`
   ${TextareaStyle};
   display: block;
   outline: none;
   user-select: text;
   white-space: pre-wrap;
   overflow-wrap: break-word;
-  &:hover {
-    cursor: ${({disabled}) => disabled ? 'default': 'text'}
-  }
 
   ${({hasEmpty}) => hasEmpty ? placeholder : ''}
+`;
 
-
-`
-
-export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: number | undefined}>`
+export const MentionItemsWrapper = styled.div<{ ref: any, name: string, width: number | undefined }>`
   background-color: white;
   border-radius: ${({theme}) => theme.border.radius.menu};
   box-shadow: ${({theme}) => theme.border.shadow.regular};
@@ -38,14 +33,14 @@ export const MentionItemsWrapper = styled.div<{ref: any, name: string, width: nu
   width: ${({width}) => width || 'auto'};
   max-height: 175px;
   text-align: left;
-`
+`;
 
-export const DropdownItem = styled.div<{isIntended: boolean}>`
-  flex:0 0 50px;
+export const DropdownItem = styled.div<{ isIntended: boolean, disabled?: boolean }>`
+  flex: 0 0 50px;
   display: flex;
   background-color: ${({isIntended, theme}) => isIntended ? theme.state.color.elementSelected : 'transparent'};
   user-select: none;
-  cursor: pointer;
+  cursor: ${({disabled}) => disabled ? 'auto' : 'pointer'} ;
 `;
 
 export const AvatarBed = styled.div`
@@ -53,7 +48,7 @@ export const AvatarBed = styled.div`
   justify-content: center;
   align-items: center;
   flex: 0 0 64px;
-`
+`;
 
 export const DropdownItemTextBed = styled.div`
   flex: 1 1 auto;
@@ -61,18 +56,21 @@ export const DropdownItemTextBed = styled.div`
   flex-direction: column;
   justify-content: center;
   border-bottom: 1px solid ${({theme}) => theme.border.color.light};
-`
-export const DropdownItemTitle = styled.div`
+`;
+export const DropdownItemTitle = styled.div<{ disabled?: boolean }>`
+  color: ${({theme, disabled}) => theme.text.color[disabled ? 'medium' : 'dark']};
 `;
 export const DropdownItemSubtitle = styled.div`
   font-size: ${({theme}) => theme.text.size.miniBase};
   color: ${({theme}) => theme.text.color.medium};
 `;
 
-export const HighlightedMark = styled.mark`
+export const HighlightedMark = styled.span`
   font-weight: ${({theme}) => theme.text.weight.bold};
 `;
-export const MentionSpan = styled.span`
+
+export const MentionSpan = styled.span<{mentionStyle?: ThemedCssFunction<object>}>`
   color: ${({theme}) => theme.text.color.primary};
   cursor: pointer;
+  ${({mentionStyle}) => mentionStyle ? mentionStyle : {}};
 `;
