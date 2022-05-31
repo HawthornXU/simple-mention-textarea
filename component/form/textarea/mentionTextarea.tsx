@@ -89,8 +89,7 @@ export const RestoreMentionText: FC<RestoreContentInput> = ({value, mentionOptio
   return <>{
     textPart.map((part, i) => (<Fragment key={i}>
         {part}
-        {mentions && mentions[i] && <MentionSpan mentionStyle={mentionStyle} contentEditable="false"
-                                                 onClick={(e) => onMentionClick && onMentionClick(e, mentions[i])}
+        {mentions && mentions[i] && <MentionSpan mentionStyle={mentionStyle} onClick={(e) => onMentionClick && onMentionClick(e, mentions[i])}
                                                  ref={(ref) => {
                                                    (ref) && ((ref as any).getMentionData = () => mentions[i]);
                                                  }}>{mentionOption.mentionDenotationChar + mentions[i].name}</MentionSpan>}
@@ -199,6 +198,35 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
     const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
     setHasEmpty(isInnerTextEmpty);
 
+    if (range?.anchorNode?.parentNode?.nodeName === 'SPAN') {
+      const currentNode = range?.anchorNode?.parentNode;
+      const currentNodeText = range?.anchorNode.textContent;
+      // @ts-ignore
+      const mentionText = (currentNode as MentionSpan).getMentionData().name + mentionOption.mentionDenotationChar
+      // @ts-ignore
+      if (mentionText.length >= currentNodeText?.length) {
+        range?.anchorNode?.parentNode?.parentNode?.removeChild(currentNode);
+        document.execCommand('insertText',false, mentionOption.mentionDenotationChar);
+        setTimeout(() => {
+          setSearchText('');
+          setValidMentionList(mentionOption.canMentionList);
+          console.log(mentionOption.canMentionList);
+          showDropdown();
+        }, 200);
+
+      }
+      // @ts-ignore
+      else if (mentionText.length < currentNodeText?.length)  {
+        const cursorOffset = getSelection()?.getRangeAt(0)?.startOffset;
+        range?.anchorNode?.parentNode?.parentNode?.removeChild(currentNode);
+        const changeTextNode = document.createTextNode((currentNodeText as string));
+        getSelection()?.getRangeAt(0)?.insertNode(changeTextNode);
+        getSelection()?.collapse(changeTextNode,cursorOffset)
+      }
+      return
+
+    }
+
     // if text before cursor
     if (isInnerTextEmpty || range?.anchorNode?.nodeName !== '#text') {
       return hideDropdown();
@@ -303,7 +331,6 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
     mentionSpan.style.color = (theme as any)['text'].color.primary;
     mentionSpan.style.cursor = 'pointer';
     mentionSpan.innerText = proxyRef.current.mentionOption.mentionDenotationChar + item.name;
-    mentionSpan.contentEditable = 'false';
     mentionSpan.getMentionData = () => item;
     onMentionClick && mentionSpan.addEventListener('click', (e) => onMentionClick(e, item));
     const cursorRange = getSelection()?.getRangeAt(0);
@@ -311,6 +338,10 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
     // move cursor to mentionSpan after
     getSelection()?.collapse((getSelection()?.anchorNode?.nextSibling?.nextSibling as Node), 0);
+    // add zero width space in cursor
+    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u200B'));
+    // move cursor into space after
+    getSelection()?.collapseToEnd();
     // add space in cursor
     getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u00A0'));
     // move cursor into space after
