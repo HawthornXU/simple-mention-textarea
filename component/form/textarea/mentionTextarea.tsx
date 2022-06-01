@@ -325,6 +325,9 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
   };
 
   const appendMentionMark = (item: MentionItem) => {
+    if (item.disabled) {
+      return;
+    }
     removeDenotationCharAndSearchText();
 
     const mentionSpan: MentionSpan = document.createElement('span');
@@ -361,16 +364,27 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
   };
 
   const cycleSelection = (dir: 1 | -1) => setIntendedKey(prevState => {
-    let countIntendedKey = prevState + dir;
+    let countIntendedKey = getCanSelectKey(prevState, dir);
+    setIntendedNodeIntoView(countIntendedKey);
+    return countIntendedKey;
+  });
+
+  const getCanSelectKey = (prevStateKey: number , dir: 1 | -1) => {
+    if (!!proxyRef.current.validMentionList.find(item => !item.disabled)) {
+      return -1;
+    }
+    let countIntendedKey = prevStateKey + dir;
     if (countIntendedKey === proxyRef.current.validMentionList.length) {
       countIntendedKey = 0;
     }
     else if (countIntendedKey < 0) {
       countIntendedKey = proxyRef.current.validMentionList.length - 1;
     }
-    setIntendedNodeIntoView(countIntendedKey);
-    return countIntendedKey;
-  });
+    if (proxyRef.current.validMentionList[countIntendedKey].disabled){
+      countIntendedKey = getCanSelectKey(countIntendedKey, dir);
+    }
+    return countIntendedKey
+  }
 
   const setIntendedNodeIntoView = (index: number) => {
     if (mentionItemsWrapperRef.current) {
@@ -416,7 +430,11 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
                              ref={mentionItemsWrapperRef}>
           {validMentionList.map((item, i) => (
             <DropdownItem key={item.id} isIntended={intendedKey === i} disabled={item.disabled}
-                          onMouseEnter={() => setIntendedKey(i)} onClick={(e) => appendMentionMark(item)}>
+              onMouseEnter={() => {
+                if (!validMentionList[i].disabled) {
+                  setIntendedKey(i);
+                }
+              }} onClick={(e) => appendMentionMark(item)}>
               <AvatarBed>
                 <Avatar alt={item.name} src={item.avatarUrl} />
               </AvatarBed>
