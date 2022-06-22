@@ -4,7 +4,7 @@ import React, {
   forwardRef,
   Fragment,
   MutableRefObject,
-  useEffect,
+  useEffect, useImperativeHandle,
   useRef,
   useState
 } from 'react';
@@ -129,16 +129,18 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
   const [intendedKey, setIntendedKey] = useState<number>(0);
   const [innerValue, setInnerValue] = useState<MentionValue>({text: '', mentions: []});
 
-  const mentionItemsWrapperRef = useRef();
+  const mentionItemsWrapperRef = useRef<HTMLDivElement>();
+  const richTextareaRef = useRef<MentionTextareaRef>()
 
   // fix stale-closure issue: in closure will captures stale state value
   const proxyRef = useRef({anchorEl, validMentionList, intendedKey, searchText: '', mentionOption});
 
   const theme = useTheme();
 
+  useImperativeHandle(ref, () => (richTextareaRef.current as MentionTextareaRef));
 
   useEffect(() => {
-    const editableTextarea = ref.current;
+    const editableTextarea = (richTextareaRef.current as MentionTextareaRef);
     textareaObserver.current.observe(editableTextarea, {
       childList: true,
       subtree: true,
@@ -169,6 +171,7 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
   useEffect(() => {
     proxyRef.current.validMentionList = validMentionList;
+    setIntendedKey(validMentionList.findIndex(item => !item.disabled));
   }, [validMentionList]);
 
   useEffect(() => {
@@ -184,15 +187,14 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
 
   const init = () => {
-    setIntendedKey(0);
     setSearchText('');
-    const innerText = ref.current?.innerText;
+    const innerText = richTextareaRef.current?.innerText;
     setHasEmpty([undefined, '', '\u200B'].includes(innerText));
   };
 
   const textareaObserver = useRef(new MutationObserver((mutationRecord, observer) => {
     onValueChange && onValueChange(getMentionData());
-    const textareaElement = ref.current;
+    const textareaElement = richTextareaRef.current;
     const innerText = textareaElement?.innerText;
     const range = getSelection();
     const isInnerTextEmpty = [undefined, '', '\u200B'].includes(innerText);
@@ -202,7 +204,7 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
       const currentNode = range?.anchorNode?.parentNode;
       const currentNodeText = range?.anchorNode.textContent;
       // @ts-ignore
-      const mentionText = (currentNode as MentionSpan).getMentionData().name + mentionOption.mentionDenotationChar
+      const mentionText = mentionOption.mentionDenotationChar + (currentNode as MentionSpan).getMentionData().name;
       // @ts-ignore
       if (mentionText.length >= currentNodeText?.length) {
         range?.anchorNode?.parentNode?.parentNode?.removeChild(currentNode);
@@ -210,13 +212,13 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
         setTimeout(() => {
           setSearchText('');
           setValidMentionList(mentionOption.canMentionList);
-          console.log(mentionOption.canMentionList);
           showDropdown();
         }, 200);
 
       }
       // @ts-ignore
       else if (mentionText.length < currentNodeText?.length)  {
+        // if add string in mention, change to normal string
         const cursorOffset = getSelection()?.getRangeAt(0)?.startOffset;
         range?.anchorNode?.parentNode?.parentNode?.removeChild(currentNode);
         const changeTextNode = document.createTextNode((currentNodeText as string));
@@ -249,10 +251,11 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
   }));
 
   const getMentionData = () => {
-    const textareaElement = ref.current;
+    const textareaElement = richTextareaRef.current;
     let text = '';
     const mentions: Array<MentionItem> = [];
     let parseList: Array<any> = [];
+    // @ts-ignore
     parseList = parseNodeList(parseList, mentions, textareaElement.childNodes);
     text = parseList.join('');
     return {
@@ -288,7 +291,8 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
     if (!!!proxyRef.current.anchorEl) {
       document.addEventListener('mousedown', handleDocumentClick, false);
       document.addEventListener('keydown', onKeydown);
-      setAnchorEl(ref.current);
+      const getBoundingClientRect = () => getSelection()?.getRangeAt(0)?.getBoundingClientRect();
+      setAnchorEl({getBoundingClientRect});
     }
   };
 
@@ -303,6 +307,11 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
   const handleDocumentClick = (e: Event) => {
     e.preventDefault();
+    // @ts-ignore
+    if (mentionItemsWrapperRef.current.contains((e.target as Node))) {
+      return;
+    }
+    hideDropdown();
   };
 
   const onKeydown = (e: KeyboardEvent) => {
@@ -340,15 +349,14 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
     cursorRange?.insertNode(mentionSpan);
 
     // move cursor to mentionSpan after
-    getSelection()?.collapse((getSelection()?.anchorNode?.nextSibling?.nextSibling as Node), 0);
-    // add zero width space in cursor
-    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u200B'));
-    // move cursor into space after
-    getSelection()?.collapseToEnd();
-    // add space in cursor
-    getSelection()?.getRangeAt(0)?.insertNode(document.createTextNode('\u00A0'));
-    // move cursor into space after
-    getSelection()?.collapseToEnd();
+    cursorRange?.collapse(false);
+
+    // add none width space in cursor, use to split mention span and normal text, then add space
+    cursorRange?.insertNode(document.createTextNode('\u200B\u00A0'));
+    cursorRange?.collapse(false);
+    getSelection()?.removeAllRanges();
+    // @ts-ignore
+    getSelection()?.addRange(cursorRange);
   };
 
   const removeDenotationCharAndSearchText = () => {
@@ -370,7 +378,7 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
   });
 
   const getCanSelectKey = (prevStateKey: number , dir: 1 | -1) => {
-    if (!!proxyRef.current.validMentionList.find(item => !item.disabled)) {
+    if (!proxyRef.current.validMentionList.find(item => !item.disabled)) {
       return -1;
     }
     let countIntendedKey = prevStateKey + dir;
@@ -388,13 +396,13 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
   const setIntendedNodeIntoView = (index: number) => {
     if (mentionItemsWrapperRef.current) {
-      const mentionItemsWrapper = mentionItemsWrapperRef.current as HTMLDivElement;
+      const mentionItemsWrapper = mentionItemsWrapperRef.current;
       const intendedNode = mentionItemsWrapper.childNodes[index] as HTMLDivElement;
-      if (intendedNode.offsetTop + intendedNode.offsetHeight > mentionItemsWrapper.clientHeight) {
-        intendedNode.scrollIntoView(false);
+      if (intendedNode.offsetTop + intendedNode.offsetHeight > mentionItemsWrapper.clientHeight + mentionItemsWrapper.scrollTop) {
+        mentionItemsWrapper.scrollTop = intendedNode.offsetTop + intendedNode.offsetHeight - mentionItemsWrapper.clientHeight;
       }
-      else if (intendedNode.offsetTop === 0) {
-        intendedNode.scrollIntoView(true);
+      else if (mentionItemsWrapper.scrollTop > intendedNode.offsetTop) {
+        mentionItemsWrapper.scrollTop = intendedNode.offsetTop;
       }
     }
   };
@@ -420,7 +428,7 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
 
   return (<>
       <RichTextarea {...props} hasEmpty={hasEmpty} role="textbox" aria-multiline="true" contentEditable={true}
-                    suppressContentEditableWarning={true} ref={ref}>
+                    suppressContentEditableWarning={true} ref={richTextareaRef}>
         {<RestoreMentionText value={innerValue} mentionOption={mentionOption} onMentionClick={onMentionClick}/>}
       </RichTextarea>
       <Popper open={!!anchorEl} anchorEl={anchorEl} style={{zIndex: 10000}} disablePortal={false}
@@ -439,10 +447,8 @@ export const MentionTextarea = forwardRef((props: MentionTextarea, ref: MutableR
                 <Avatar alt={item.name} src={item.avatarUrl} />
               </AvatarBed>
               <DropdownItemTextBed>
-                <DropdownItemTitle disabled={item.disabled}><Highlighted text={item.name}
-                                                                         highlight={searchText}/></DropdownItemTitle>
-                <DropdownItemSubtitle><Highlighted text={item.subtitle}
-                                                   highlight={searchText}/></DropdownItemSubtitle>
+                {item.name && <DropdownItemTitle disabled={item.disabled}><Highlighted text={item.name} highlight={searchText}/></DropdownItemTitle>}
+                {item.subtitle && <DropdownItemSubtitle><Highlighted text={item.subtitle} highlight={searchText}/></DropdownItemSubtitle>}
               </DropdownItemTextBed>
             </DropdownItem>
           ))}
