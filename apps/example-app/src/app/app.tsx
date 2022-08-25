@@ -1,12 +1,8 @@
-import { SizeChart } from 'component/form/sizeChart';
-import { Formik } from 'formik';
 import { AppTheme } from '../../../../component/app.theme';
-import { Textarea } from '../../../../component/form/textarea'
-import * as Yup from 'yup';
-import { FormikHelpers } from 'formik/dist/types';
 import {
   MentionItem,
-  MentionTextarea, MentionTextareaRef
+  MentionTextarea,
+  MentionValue
 } from '../../../../component/form/textarea/mentionTextarea';
 import styled from 'styled-components';
 import { useRef } from 'react';
@@ -14,11 +10,6 @@ import { useRef } from 'react';
 export const TextareaBed = styled.div`
   margin-top: 200px;
 `
-
-interface Values {
-  textarea: any,
-  normal: string
-}
 
 const mentionList: Array<MentionItem> = [
   {id: '1', name: 'Paul Johnson', subtitle: 'Guardian for Robert Johnson', avatarUrl: 'http://placekitten.com/34/34'},
@@ -31,8 +22,7 @@ const mentionList: Array<MentionItem> = [
 
 
 export function App() {
-  const initialValues = {
-    textarea : {
+  const initialValues: MentionValue = {
       text: 'Commenting twice with \uE001 mentioned, along with \uE001',
       mentions: [{
         "id": "08A4AF93BD56AA031F1E2DEDA34BBA2A",
@@ -44,47 +34,15 @@ export function App() {
           name: 'Robert Johnson', subtitle: 'child of Paul Johnson', avatarUrl: 'http://placekitten.com/34/34',
           "type": "MEMBERSHIP"
         }
-
       ]
-    },
-    normal: ''
-  }
-  const FormSchema = Yup.object().shape({})
+    }
   const textareaRef = useRef<any>();
 
-  const onFormSubmit = (values: Values, formikHelpers: FormikHelpers<Values>) => {
-
-  }
-
-  const onChangevalue = (values: Values) => {
-    console.log(values);
-
-  }
   return (
     <AppTheme>
-      <Formik
-        onSubmit={(values, formik) => onFormSubmit(values, formik)}
-        initialValues={initialValues}
-        validationSchema={FormSchema}>{
-        (props) => (
-          <form onSubmit={props.handleSubmit} onChange={() => onChangevalue(props.values)}>
             <TextareaBed>
-              <MentionTextarea placeholder="有什么想和大家分享的？" ref={textareaRef} mentionOption={{mentionDenotationChar: '@', canMentionList: mentionList}} />
+              <MentionTextarea value={initialValues} placeholder="有什么想和大家分享的？" ref={textareaRef} mentionOption={{mentionDenotationChar: '@', canMentionList: mentionList}} />
             </TextareaBed>
-
-
-            <Textarea
-              placeholder="有什么想和大家分享的？"
-              name="normal"
-              minHeight="76px"
-              size={SizeChart.FULL}
-              disabled={true}
-              maxLength={10000}/>
-          </form>
-        )
-      }
-
-      </Formik>
     </AppTheme>
   );
 }

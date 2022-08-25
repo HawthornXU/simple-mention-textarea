@@ -51,7 +51,7 @@ type RestoreContentInput = Pick<MentionTextarea, 'mentionOption' | 'onMentionCli
   mentionStyle?: ThemedCssFunction<object>
 };
 
-interface MentionValue {
+export interface MentionValue {
   text: string,
   mentions?: Array<MentionItem>
 }

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "projects": {
-    "spond-client": "apps/spond-client",
-    "spond-client-e2e": "apps/spond-client-e2e"
+    "example-app": "apps/example-app",
+    "example-app-e2e": "apps/example-app-e2e"
   }
 }

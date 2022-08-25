@@ -1,5 +1,5 @@
 {
-  "name": "spond-frontend-platform",
+  "name": "simple-mention-textarea",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
@@ -11,7 +11,6 @@
   "dependencies": {
     "core-js": "^3.6.5",
     "lodash": "^4.17.21",
-    "quill-mention": "^3.1.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "react-is": "17.0.2",
@@ -51,7 +50,6 @@
     "eslint-plugin-jsx-a11y": "6.4.1",
     "eslint-plugin-react": "7.26.1",
     "eslint-plugin-react-hooks": "4.2.0",
-    "formik": "^2.1.4",
     "jest": "27.2.3",
     "prettier": "^2.3.1",
     "prop-types": "^15.8.1",

@@ -1,6 +1,6 @@
 {
-  "root": "apps/spond-client",
-  "sourceRoot": "apps/spond-client/src",
+  "root": "apps/example-app",
+  "sourceRoot": "apps/example-app/src",
   "projectType": "application",
   "targets": {
     "build": {
@@ -8,26 +8,26 @@
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/apps/spond-client",
-        "index": "apps/spond-client/src/index.html",
+        "outputPath": "dist/apps/example-app",
+        "index": "apps/example-app/src/index.html",
         "baseHref": "/",
-        "main": "apps/spond-client/src/main.tsx",
-        "polyfills": "apps/spond-client/src/polyfills.ts",
-        "tsConfig": "apps/spond-client/tsconfig.app.json",
+        "main": "apps/example-app/src/main.tsx",
+        "polyfills": "apps/example-app/src/polyfills.ts",
+        "tsConfig": "apps/example-app/tsconfig.app.json",
         "assets": [
-          "apps/spond-client/src/favicon.ico",
-          "apps/spond-client/src/assets"
+          "apps/example-app/src/favicon.ico",
+          "apps/example-app/src/assets"
         ],
         "styles": [],
         "scripts": [],
-        "webpackConfig": "apps/spond-client/webpack.config.js"
+        "webpackConfig": "apps/example-app/webpack.config.js"
       },
       "configurations": {
         "production": {
           "fileReplacements": [
             {
-              "replace": "apps/spond-client/src/environments/environment.ts",
-              "with": "apps/spond-client/src/environments/environment.prod.ts"
+              "replace": "apps/example-app/src/environments/environment.ts",
+              "with": "apps/example-app/src/environments/environment.prod.ts"
             }
           ],
           "optimization": true,
@@ -42,12 +42,12 @@
     "serve": {
       "executor": "@nrwl/web:dev-server",
       "options": {
-        "buildTarget": "spond-client:build",
+        "buildTarget": "example-app:build",
         "hmr": true
       },
       "configurations": {
         "production": {
-          "buildTarget": "spond-client:build:production",
+          "buildTarget": "example-app:build:production",
           "hmr": false
         }
       }
@@ -56,14 +56,14 @@
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/spond-client/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": ["apps/example-app/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/apps/spond-client"],
+      "outputs": ["coverage/apps/example-app"],
       "options": {
-        "jestConfig": "apps/spond-client/jest.config.js",
+        "jestConfig": "apps/example-app/jest.config.js",
         "passWithNoTests": true
       }
     }
