@@ -41,7 +41,7 @@ export function App() {
   return (
     <AppTheme>
             <TextareaBed>
-              <MentionTextarea value={initialValues} placeholder="有什么想和大家分享的？" ref={textareaRef} mentionOption={{mentionDenotationChar: '@', canMentionList: mentionList}} />
+              <MentionTextarea value={initialValues} placeholder="input @ mention people" ref={textareaRef} mentionOption={{mentionDenotationChar: '@', canMentionList: mentionList}} />
             </TextareaBed>
     </AppTheme>
   );
